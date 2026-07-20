@@ -1,7 +1,7 @@
 // sw.js - Service Worker（オフライン対応）
-// アプリのファイルをキャッシュして、インターネットなしでも動作するようにします
+// ネットワーク優先でファイルを取得し、オフライン時のみキャッシュを使います
 
-const CACHE_NAME = 'playbudget-v1';
+const CACHE_NAME = 'playbudget-v2'; // ★更新のたびに番号を上げる
 
 // キャッシュするファイル一覧
 const FILES_TO_CACHE = [
@@ -28,9 +28,16 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// リクエスト時：キャッシュ優先、なければネットワーク
+// リクエスト時：ネットワーク優先、失敗したらキャッシュ（オフライン対応）
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    fetch(event.request)
+      .then(res => {
+        // 取得成功したらキャッシュも更新しておく
+        const resClone = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone)).catch(() => {});
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

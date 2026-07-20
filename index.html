@@ -1247,7 +1247,7 @@ function renderSettings() {
 async function saveBudget() {
   const v = parseFloat(document.getElementById('s-budget').value);
   if (!v || v <= 0) { alert('正しい金額を入力してください'); return; }
-  S.budget = v; await await save(); renderSettings();
+  S.budget = v; await save(); renderSettings();
   toast('💾 予算を保存しました！');
 }
 
@@ -1255,7 +1255,7 @@ async function delCat(id) {
   if (S.categories.length <= 1) { alert('カテゴリは最低1つ必要です'); return; }
   if (!confirm('このカテゴリを削除しますか？')) return;
   S.categories = S.categories.filter(c => c.id !== id);
-  await await save(); renderSettings();
+  await save(); renderSettings();
 }
 
 /* ==================================================
@@ -1293,7 +1293,7 @@ async function saveNewCat() {
   const name = document.getElementById('new-cat-name').value.trim();
   if (!name) { alert('カテゴリ名を入力してください'); return; }
   S.categories.push({ id:'c_'+Date.now(), name, icon:newIcon, color:newColor });
-  await await save(); closeModal(); renderSettings();
+  await save(); closeModal(); renderSettings();
   toast('✅ カテゴリを追加しました！');
 }
 
@@ -1373,7 +1373,7 @@ function closeEditModal() {
 async function delExpense(id) {
   if (!confirm('この支出を削除しますか？')) return;
   S.expenses = S.expenses.filter(e => e.id !== id);
-  await await save(); renderHome();
+  await save(); renderHome();
 }
 
 /* ==================================================
@@ -1502,8 +1502,8 @@ async function saveCatBudgets() {
 ================================================== */
 const MII_GREAT   = ['いい調子！✨', 'すごい！節約上手！', 'この調子だよ〜！🎵', 'ファビュラス！💕', 'みーちゃんも嬉しい！'];
 const MII_CAUTION = ['ちょっと使いすぎかも…', '予算の半分超えたよ！', 'そろそろペース落とそっか？', 'ちょっと心配だよ〜'];
-const MII_DANGER  = ['節約する気ある？😾', 'みーちゃん心配…', 'もうすぐ予算オーバーだよ！', 'ちょっと待って！！'];
-const MII_OVER    = ['予算オーバーだよ！😱', 'やりすぎ〜！！😾', '来月はがんばろ…', 'ちょっと、使いすぎ！'];
+const MII_DANGER  = ['みーちゃん心配…', 'もうすぐ予算オーバーだよ！', 'ちょっと待って！！', 'そろそろ本気で節約…！'];
+const MII_OVER    = ['節約する気ある？😾', '予算オーバーだよ！😱', 'やりすぎ〜！！😾', '来月はがんばろ…', 'ちょっと、使いすぎ！'];
 const miiCatOver  = n => [`${n}の出費が多いかも！`, `${n}、使いすぎてない？`, `${n}に集中しすぎ〜！`];
 
 let miiBubbleTimer = null;
