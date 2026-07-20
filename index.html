@@ -563,11 +563,12 @@
     #miichan-wrap {
       position: fixed;
       left: 16px;
-      bottom: calc(var(--tab-h) + var(--safe-b) + 12px);
+      top: calc(var(--safe-t) + 64px);
       z-index: 250;
       display: flex; flex-direction: column; align-items: flex-start;
       gap: 4px;
     }
+    #miichan-wrap.hidden { display: none; }
     #miichan-svg {
       width: 84px; height: auto; cursor: pointer;
       filter: drop-shadow(0 4px 8px rgba(232,120,154,.25));
@@ -991,6 +992,8 @@ function switchTab(t) {
   if (t==='history')  renderHistory();
   if (t==='receipt')  renderReceipt();
   if (t==='settings') renderSettings();
+  // みーちゃんはホーム画面のみ表示
+  document.getElementById('miichan-wrap').classList.toggle('hidden', t !== 'home');
 }
 
 /* ==================================================
