@@ -1011,6 +1011,26 @@ function renderHome() {
     .map(c => ({ ...c, sp: catSpent(c.id) }))
     .filter(c => c.sp > 0)
     .sort((a, b) => b.sp - a.sp);
+
+  // 色の重複を解消：同じ色のカテゴリにはパレットから未使用色を割り当て
+  const CHART_PALETTE = ['#e8789a','#a78bca','#7ab8d4','#6dbfa0','#d4956e',
+                         '#e8b06d','#c98fa8','#9ab8d4','#c45c7c','#f2afc0'];
+  const usedColors = new Set();
+  const chartColor = {};
+  donutCats.forEach(c => {
+    let col = (c.color || '').toLowerCase();
+    if (!col || usedColors.has(col)) {
+      col = CHART_PALETTE.find(p => !usedColors.has(p.toLowerCase()));
+      if (!col) {
+        // パレットが尽きたらHSLで生成
+        col = `hsl(${(usedColors.size * 47) % 360}, 55%, 70%)`;
+      }
+      col = col.toLowerCase();
+    }
+    usedColors.add(col);
+    chartColor[c.id] = col;
+  });
+
   const R = 70, CIRC = 2 * Math.PI * R;
   // オーバー時は総支出を全周とする
   const denom = Math.max(S.budget, spent) || 1;
@@ -1018,7 +1038,7 @@ function renderHome() {
   const arcs = donutCats.map(c => {
     const f = c.sp / denom;
     const seg = `<circle cx="100" cy="100" r="${R}" fill="none"
-      stroke="${c.color}" stroke-width="24"
+      stroke="${chartColor[c.id]}" stroke-width="24"
       stroke-dasharray="${f * CIRC} ${CIRC}"
       stroke-dashoffset="${-arcOffset * CIRC}"/>`;
     arcOffset += f;
@@ -1054,6 +1074,7 @@ function renderHome() {
     catsEl.style.display = 'block';
     catsEl.innerHTML = `<div class="sec-title">カテゴリ別</div>` +
       usedCats.map(c => {
+        const col = chartColor[c.id] || c.color;
         const sp  = catSpent(c.id);
         const bdg = S.catBudgets?.[c.id] || 0;
 
@@ -1061,13 +1082,13 @@ function renderHome() {
           // 予算設定済み：予算に対する進捗を表示
           const r    = Math.min(sp / bdg, 1);
           const over = sp > bdg;
-          const barColor = over ? 'var(--red)' : (r >= 0.8 ? 'var(--orange)' : c.color);
+          const barColor = over ? 'var(--red)' : (r >= 0.8 ? 'var(--orange)' : col);
           const status = over
             ? `<span style="color:var(--red);font-weight:700">${fmt(sp - bdg)} オーバー</span>`
             : `残り ${fmt(bdg - sp)}`;
           return `
             <div class="cat-row cat-row-budget">
-              <div class="cat-icon-sm" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+              <div class="cat-icon-sm" style="background:${col}22;color:${col}">${c.icon}</div>
               <div class="cat-budget-info">
                 <div class="cat-budget-top">
                   <span class="cat-name-sm">${c.name}</span>
@@ -1085,10 +1106,10 @@ function renderHome() {
         const r = S.budget > 0 ? Math.min(sp/S.budget,1) : 0;
         return `
           <div class="cat-row">
-            <div class="cat-icon-sm" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+            <div class="cat-icon-sm" style="background:${col}22;color:${col}">${c.icon}</div>
             <div class="cat-name-sm">${c.name}</div>
             <div class="cat-bar-track">
-              <div class="cat-bar-fill" style="width:${r*100}%;background:${c.color}"></div>
+              <div class="cat-bar-fill" style="width:${r*100}%;background:${col}"></div>
             </div>
             <div class="cat-amount">${fmt(sp)}</div>
           </div>`;
