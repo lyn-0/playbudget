@@ -5,9 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>遊び代管理</title>
 
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc, setDoc, enableIndexedDbPersistence }
+      from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyADydfhaPwCNBd_CO2c5qQM0ONmr-FTEZQ",
+      authDomain: "kakeibo-21cf0.firebaseapp.com",
+      projectId: "kakeibo-21cf0",
+      storageBucket: "kakeibo-21cf0.firebasestorage.app",
+      messagingSenderId: "558811122568",
+      appId: "1:558811122568:web:4e08fca088a1eb9579483d",
+      measurementId: "G-P1PX4Z9T3H"
+    };
+
+    const app      = initializeApp(firebaseConfig);
+    const auth     = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    const db       = getFirestore(app);
+
+    // オフラインキャッシュを有効化
+    enableIndexedDbPersistence(db).catch(() => {});
+
+    // グローバルに公開
+    window._auth     = auth;
+    window._provider = provider;
+    window._db       = db;
+    window._doc      = doc;
+    window._getDoc   = getDoc;
+    window._setDoc   = setDoc;
+    window._signInWithPopup    = signInWithPopup;
+    window._signOut            = signOut;
+    window._onAuthStateChanged = onAuthStateChanged;
+  </script>
+
   <!-- PWA設定 -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#7c3aed">
+  <meta name="theme-color" content="#e8789a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="遊び代">
@@ -17,16 +55,17 @@
        CSS変数 & リセット
     ===================================================== */
     :root {
-      --primary:       #7c3aed;
-      --primary-light: #ede9fe;
-      --green:         #10b981;
-      --orange:        #f59e0b;
-      --red:           #ef4444;
-      --bg:            #f3f4f6;
+      --primary:       #e8789a;
+      --primary-light: #fde8ef;
+      --primary-dark:  #c45c7c;
+      --green:         #6dbfa0;
+      --orange:        #e89a6d;
+      --red:           #e86d7a;
+      --bg:            #fdf5f7;
       --card:          #ffffff;
-      --text:          #111827;
-      --text2:         #6b7280;
-      --border:        #e5e7eb;
+      --text:          #3d2533;
+      --text2:         #9e7a8a;
+      --border:        #f5dde6;
       --tab-h:         68px;
       --safe-b:        env(safe-area-inset-bottom, 0px);
       --safe-t:        env(safe-area-inset-top, 44px);
@@ -119,7 +158,7 @@
     .remaining-amt.orange { color: var(--orange); }
     .remaining-amt.red    { color: var(--red); }
 
-    .prog-track { background: #f3f4f6; border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 8px; }
+    .prog-track { background: #fdeef3; border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 8px; }
     .prog-fill  { height: 100%; border-radius: 8px; transition: width .5s cubic-bezier(.4,0,.2,1); }
     .prog-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); }
 
@@ -143,7 +182,7 @@
       font-size: 15px; flex-shrink: 0;
     }
     .cat-name-sm { font-size: 13px; width: 62px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cat-bar-track { flex: 1; background: #f3f4f6; border-radius: 4px; height: 8px; overflow: hidden; }
+    .cat-bar-track { flex: 1; background: #fdeef3; border-radius: 4px; height: 8px; overflow: hidden; }
     .cat-bar-fill  { height: 100%; border-radius: 4px; transition: width .4s; }
     .cat-amount { font-size: 14px; font-weight: 700; width: 72px; text-align: right; flex-shrink: 0; }
 
@@ -154,7 +193,7 @@
     .expense-item {
       display: flex; align-items: center; gap: 12px;
       padding: 13px 16px;
-      border-bottom: 1px solid #f3f4f6;
+      border-bottom: 1px solid #fdeef3;
     }
     .expense-item:last-child { border-bottom: none; }
     .exp-icon {
@@ -167,9 +206,9 @@
     .exp-note { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .exp-date { font-size: 11px; color: #9ca3af; }
     .exp-amt  { font-size: 16px; font-weight: 800; flex-shrink: 0; }
-    .del-btn  { background: none; border: none; color: #ef4444; cursor: pointer; padding: 6px; font-size: 16px; flex-shrink: 0; }
+    .del-btn  { background: none; border: none; color: #e86d7a; cursor: pointer; padding: 6px; font-size: 16px; flex-shrink: 0; }
     .expense-item { cursor: pointer; transition: background .15s; }
-    .expense-item:active { background: #f9fafb; }
+    .expense-item:active { background: #fef7f9; }
     .receipt-tag { font-size: 10px; background: #e0e7ff; color: #4338ca; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
 
     .empty-state { text-align: center; padding: 48px 24px; color: var(--text2); }
@@ -187,7 +226,7 @@
 
     .amt-row {
       display: flex; align-items: center; gap: 4px;
-      background: #f9fafb; border: 2px solid var(--border);
+      background: #fef7f9; border: 2px solid var(--border);
       border-radius: 14px; padding: 14px 16px;
       transition: border-color .2s;
     }
@@ -198,13 +237,13 @@
       font-size: 30px; font-weight: 900; color: var(--text);
       outline: none; width: 100%;
     }
-    .amt-input::placeholder { color: #d1d5db; }
+    .amt-input::placeholder { color: #d4b0bc; }
 
     .cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
     .cat-btn {
       display: flex; flex-direction: column; align-items: center; gap: 6px;
       padding: 12px 6px; border: 2px solid transparent;
-      border-radius: 16px; background: #f9fafb;
+      border-radius: 16px; background: #fef7f9;
       cursor: pointer; font-size: 11px; font-weight: 600;
       color: var(--text2); transition: all .15s;
     }
@@ -215,7 +254,7 @@
       width: 100%; padding: 14px 16px;
       border: 2px solid var(--border); border-radius: 14px;
       font-size: 16px; outline: none;
-      background: #f9fafb; color: var(--text);
+      background: #fef7f9; color: var(--text);
       transition: border-color .2s;
       -webkit-appearance: none;
     }
@@ -239,19 +278,19 @@
     }
     .cancel-btn {
       width: 100%; padding: 15px;
-      background: #e5e7eb; color: #374151;
+      background: #f5dde6; color: #9e7a8a;
       border: none;
       border-radius: 16px; font-size: 17px; font-weight: 800;
       cursor: pointer; transition: all .15s;
     }
-    .cancel-btn:active { background: #d1d5db; }
+    .cancel-btn:active { background: #f0c8d8; }
 
     /* =====================================================
        レシートスキャナー
     ===================================================== */
     .receipt-preview {
       width: 100%; height: 210px;
-      background: #f3f4f6; border-radius: 18px;
+      background: #fdeef3; border-radius: 18px;
       overflow: hidden;
       display: flex; align-items: center; justify-content: center;
       position: relative; margin-bottom: 16px;
@@ -269,7 +308,7 @@
     }
     .spinner {
       width: 40px; height: 40px;
-      border: 4px solid #e5e7eb;
+      border: 4px solid #f5dde6;
       border-top-color: var(--primary);
       border-radius: 50%;
       animation: spin .8s linear infinite;
@@ -335,14 +374,14 @@
       position: sticky; bottom: 0;
       display: flex; flex-direction: column; gap: 10px;
     }
-    .modal-handle { width: 36px; height: 4px; background: #e5e7eb; border-radius: 2px; margin: 0 auto 20px; }
+    .modal-handle { width: 36px; height: 4px; background: #f5dde6; border-radius: 2px; margin: 0 auto 20px; }
     .modal-title  { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
 
     /* アイコン・カラーグリッド */
     .icon-grid  { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
     .icon-opt {
       font-size: 26px; padding: 8px; border-radius: 12px;
-      border: 2px solid transparent; background: #f3f4f6;
+      border: 2px solid transparent; background: #fdeef3;
       cursor: pointer; text-align: center; transition: all .15s;
     }
     .icon-opt.sel { border-color: var(--primary); background: var(--primary-light); }
@@ -353,6 +392,64 @@
       transition: transform .15s;
     }
     .color-opt.sel { border-color: #111; transform: scale(1.1); }
+
+    /* =====================================================
+       ログイン画面
+    ===================================================== */
+    #login-screen {
+      display: none;
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #e8789a 0%, #c45c7c 100%);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+      flex-direction: column;
+      padding: 40px 32px;
+    }
+    #login-screen.show { display: flex; }
+    .login-logo { font-size: 64px; margin-bottom: 16px; }
+    .login-icon-img {
+      width: 100px; height: 100px;
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .login-title { font-size: 28px; font-weight: 900; color: white; margin-bottom: 8px; letter-spacing: -1px; }
+    .login-sub   { font-size: 15px; color: rgba(255,255,255,.75); margin-bottom: 48px; text-align: center; }
+    .login-catch  { font-size: 20px; font-weight: 800; color: white; margin-bottom: 12px; text-align: center; letter-spacing: .5px; text-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .google-btn {
+      display: flex; align-items: center; gap: 12px;
+      background: white; color: #374151;
+      border: none; border-radius: 16px;
+      padding: 16px 28px; font-size: 16px; font-weight: 700;
+      cursor: pointer; width: 100%; justify-content: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,.2);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .google-btn:active { transform: scale(.97); box-shadow: 0 2px 12px rgba(0,0,0,.2); }
+    .google-icon { width: 24px; height: 24px; }
+    .login-note { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 20px; text-align: center; }
+
+    /* ナビバーのユーザーアバター */
+    .nav-user {
+      position: absolute; right: 16px; top: 50%;
+      transform: translateY(-50%) translateY(calc(var(--safe-t) / 2));
+      display: flex; align-items: center; gap: 8px;
+    }
+    .user-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      object-fit: cover; border: 2px solid var(--primary-light);
+    }
+    .user-avatar-ph {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--primary-light); color: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800;
+    }
+    .logout-btn {
+      background: none; border: none; color: var(--text2);
+      font-size: 12px; cursor: pointer; padding: 4px 8px;
+      border-radius: 8px; font-weight: 600;
+    }
+    .logout-btn:active { background: var(--bg); }
 
     /* =====================================================
        トースト
@@ -375,6 +472,24 @@
 </head>
 <body>
 
+<!-- ログイン画面 -->
+<div id="login-screen">
+  <div class="login-logo"><img src="data:image/png;base64,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" class="login-icon-img" alt="遊び代管理"></div>
+  <div class="login-title">遊び代管理</div>
+  <div class="login-catch">遊びごころを、ファビュラスに管理。</div>
+  <div class="login-sub">Googleアカウントでログインして<br>支出を記録しましょう</div>
+  <button class="google-btn" onclick="loginWithGoogle()">
+    <svg class="google-icon" viewBox="0 0 24 24">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+    Googleでログイン
+  </button>
+  <div class="login-note">ログイン情報はGoogleによって安全に管理されます</div>
+</div>
+
 <!-- トースト -->
 <div class="toast" id="toast"></div>
 
@@ -385,7 +500,10 @@
      ホームタブ
 ==================================================== -->
 <div class="tab-content active" id="tab-home">
-  <div class="nav-bar"><h1>🎮 遊び代管理</h1></div>
+  <div class="nav-bar" style="position:relative">
+    <h1>🎮 遊び代管理</h1>
+    <div class="nav-user" id="nav-user"></div>
+  </div>
   <div class="content">
     <div id="home-budget"  class="card budget-card"></div>
     <div id="home-cats"   class="card" style="display:none"></div>
@@ -506,11 +624,11 @@
       <div class="settings-row">
         <div class="settings-item">
           <span class="s-label">バージョン</span>
-          <span class="s-value">1.0.0</span>
+          <span class="s-value">2.0.0</span>
         </div>
         <div class="settings-item">
           <span class="s-label">データ保存先</span>
-          <span class="s-value">このiPhone内</span>
+          <span class="s-value">クラウド (Firestore)</span>
         </div>
       </div>
     </div>
@@ -605,32 +723,56 @@
    デフォルトデータ
 ================================================== */
 const DEF_CATS = [
-  { id:'c1', name:'食事',         icon:'🍜', color:'#FF6B6B' },
-  { id:'c2', name:'エンタメ',     icon:'🎮', color:'#4ECDC4' },
-  { id:'c3', name:'ショッピング', icon:'🛍️', color:'#45B7D1' },
-  { id:'c4', name:'カフェ',       icon:'☕', color:'#96CEB4' },
-  { id:'c5', name:'交通',         icon:'🚃', color:'#F7DC6F' },
-  { id:'c6', name:'その他',       icon:'💬', color:'#BB8FCE' },
+  { id:'c1', name:'食事',         icon:'🍜', color:'#e8789a' },
+  { id:'c2', name:'エンタメ',     icon:'🎮', color:'#a78bca' },
+  { id:'c3', name:'ショッピング', icon:'🛍️', color:'#7ab8d4' },
+  { id:'c4', name:'カフェ',       icon:'☕', color:'#d4956e' },
+  { id:'c5', name:'交通',         icon:'🚃', color:'#6dbfa0' },
+  { id:'c6', name:'その他',       icon:'💬', color:'#c98fa8' },
 ];
 
 const ICONS = ['🍜','🍣','🍔','🍺','🎮','🎬','🎵','📚',
                '🛍️','👗','☕','🏋️','⚽','🎨','✈️','🚃',
                '💊','🌸','🐾','💡','🎁','🏠','💻','🎯'];
 
-const COLORS = ['#FF6B6B','#FF9F43','#FECA57','#96CEB4','#4ECDC4',
-                '#45B7D1','#5C7CFA','#BB8FCE','#F8BBD0','#74b9ff'];
+const COLORS = ['#e8789a','#c45c7c','#a78bca','#7ab8d4','#6dbfa0',
+                '#d4956e','#e8b06d','#c98fa8','#f2afc0','#9ab8d4'];
 
 /* ==================================================
    状態管理
 ================================================== */
 let S = { budget: 30000, expenses: [], categories: [...DEF_CATS] };
+let currentUser = null;
 
-function save() { localStorage.setItem('pb2', JSON.stringify(S)); }
-function load() {
+function userDocRef() {
+  return window._doc(window._db, 'users', currentUser.uid, 'data', 'state');
+}
+
+async function save() {
+  // Firestore に保存
   try {
-    const d = localStorage.getItem('pb2');
-    if (d) S = { ...S, ...JSON.parse(d) };
-  } catch(e) {}
+    await window._setDoc(userDocRef(), S);
+  } catch(e) {
+    console.warn('Firestore save failed, falling back to localStorage', e);
+    localStorage.setItem('pb2_' + currentUser.uid, JSON.stringify(S));
+  }
+}
+
+async function load() {
+  S = { budget: 30000, expenses: [], categories: [...DEF_CATS] };
+  try {
+    const snap = await window._getDoc(userDocRef());
+    if (snap.exists()) {
+      S = { ...S, ...snap.data() };
+    }
+  } catch(e) {
+    // オフライン時はlocalStorageにフォールバック
+    console.warn('Firestore load failed, falling back to localStorage', e);
+    try {
+      const d = localStorage.getItem('pb2_' + currentUser.uid);
+      if (d) S = { ...S, ...JSON.parse(d) };
+    } catch(e2) {}
+  }
 }
 
 /* ==================================================
@@ -654,9 +796,9 @@ const usageRate   = () => S.budget > 0 ? Math.min(totalSpent() / S.budget, 1) : 
 const getCat      = id => S.categories.find(c => c.id === id) || DEF_CATS[5];
 const catSpent    = id => thisMonthExpenses().filter(e => e.categoryId === id).reduce((s,e) => s + e.amount, 0);
 const colorClass  = r  => r < .5 ? 'green' : r < .8 ? 'orange' : 'red';
-const gradient    = r  => r < .5 ? 'linear-gradient(90deg,#10b981,#34d399)'
-                        : r < .8 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)'
-                        :          'linear-gradient(90deg,#ef4444,#f87171)';
+const gradient    = r  => r < .5 ? 'linear-gradient(90deg,#6dbfa0,#8fd4b8)'
+                        : r < .8 ? 'linear-gradient(90deg,#e89a6d,#f0b48a)'
+                        :          'linear-gradient(90deg,#e86d7a,#f08a95)';
 
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -791,7 +933,7 @@ function renderAdd() {
 
 function pickAddCat(id) { addCatId = id; renderAdd(); }
 
-function submitExpense() {
+async function submitExpense() {
   const amt = parseFloat(document.getElementById('add-amount').value);
   if (!amt || amt <= 0) { alert('金額を入力してください'); return; }
   if (!addCatId) { alert('カテゴリを選択してください'); return; }
@@ -805,7 +947,7 @@ function submitExpense() {
     note: document.getElementById('add-note').value.trim(),
     isFromReceipt: false,
   });
-  save();
+  await save();
 
   // リセット
   document.getElementById('add-amount').value = '';
@@ -916,7 +1058,7 @@ function pickAmount(a, el) {
   document.getElementById('receipt-amt-disp').textContent = fmt(a);
 }
 
-function saveReceiptExpense() {
+async function saveReceiptExpense() {
   if (!rcAmount)  { alert('金額を選択してください'); return; }
   if (!rcCatId)   { alert('カテゴリを選択してください'); return; }
 
@@ -928,7 +1070,7 @@ function saveReceiptExpense() {
     note: document.getElementById('receipt-note').value.trim(),
     isFromReceipt: true,
   });
-  save();
+  await save();
 
   // リセット
   rcAmount = null;
@@ -957,18 +1099,18 @@ function renderSettings() {
     </div>`).join('');
 }
 
-function saveBudget() {
+async function saveBudget() {
   const v = parseFloat(document.getElementById('s-budget').value);
   if (!v || v <= 0) { alert('正しい金額を入力してください'); return; }
-  S.budget = v; save(); renderSettings();
+  S.budget = v; await await save(); renderSettings();
   toast('💾 予算を保存しました！');
 }
 
-function delCat(id) {
+async function delCat(id) {
   if (S.categories.length <= 1) { alert('カテゴリは最低1つ必要です'); return; }
   if (!confirm('このカテゴリを削除しますか？')) return;
   S.categories = S.categories.filter(c => c.id !== id);
-  save(); renderSettings();
+  await await save(); renderSettings();
 }
 
 /* ==================================================
@@ -1002,11 +1144,11 @@ function pickColor(c, el) {
   el.classList.add('sel');
 }
 
-function saveNewCat() {
+async function saveNewCat() {
   const name = document.getElementById('new-cat-name').value.trim();
   if (!name) { alert('カテゴリ名を入力してください'); return; }
   S.categories.push({ id:'c_'+Date.now(), name, icon:newIcon, color:newColor });
-  save(); closeModal(); renderSettings();
+  await await save(); closeModal(); renderSettings();
   toast('✅ カテゴリを追加しました！');
 }
 
@@ -1052,7 +1194,7 @@ function renderEditCatGrid() {
 
 function pickEditCat(id) { editCatId = id; renderEditCatGrid(); }
 
-function saveEditExpense() {
+async function saveEditExpense() {
   const amt = parseFloat(document.getElementById('edit-amount').value);
   if (!amt || amt <= 0) { alert('金額を入力してください'); return; }
   if (!editCatId) { alert('カテゴリを選択してください'); return; }
@@ -1069,7 +1211,7 @@ function saveEditExpense() {
     date: dateVal ? new Date(dateVal).toISOString() : S.expenses[idx].date,
   };
 
-  save();
+  await save();
   closeEditModal();
   renderHome();
   toast('✏️ 更新しました！');
@@ -1083,10 +1225,10 @@ function closeEditModal() {
 /* ==================================================
    支出削除
 ================================================== */
-function delExpense(id) {
+async function delExpense(id) {
   if (!confirm('この支出を削除しますか？')) return;
   S.expenses = S.expenses.filter(e => e.id !== id);
-  save(); renderHome();
+  await await save(); renderHome();
 }
 
 /* ==================================================
@@ -1100,10 +1242,60 @@ function toast(msg) {
 }
 
 /* ==================================================
-   初期化 & Service Worker登録
+   Firebase Auth & 初期化
 ================================================== */
-load();
-renderHome();
+function loginWithGoogle() {
+  window._signInWithPopup(window._auth, window._provider).catch(err => {
+    alert('ログインに失敗しました: ' + err.message);
+  });
+}
+
+function logout() {
+  if (!confirm('ログアウトしますか？')) return;
+  window._signOut(window._auth);
+}
+
+function renderNavUser(user) {
+  const el = document.getElementById('nav-user');
+  if (!el) return;
+  if (user.photoURL) {
+    el.innerHTML = `
+      <img class="user-avatar" src="${user.photoURL}" alt="${user.displayName}">
+      <button class="logout-btn" onclick="logout()">ログアウト</button>`;
+  } else {
+    const initial = (user.displayName || user.email || '?')[0].toUpperCase();
+    el.innerHTML = `
+      <div class="user-avatar-ph">${initial}</div>
+      <button class="logout-btn" onclick="logout()">ログアウト</button>`;
+  }
+}
+
+// Firebase SDK 読み込み後に Auth 監視を開始
+function initAuth() {
+  if (!window._onAuthStateChanged) {
+    setTimeout(initAuth, 100);
+    return;
+  }
+  window._onAuthStateChanged(window._auth, async user => {
+    if (user) {
+      // ログイン済み
+      currentUser = user;
+      document.getElementById('login-screen').classList.remove('show');
+      // ローディング表示
+      document.getElementById('home-list').innerHTML =
+        `<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>`;
+      await load();
+      renderNavUser(user);
+      renderHome();
+    } else {
+      // 未ログイン
+      currentUser = null;
+      document.getElementById('login-screen').classList.add('show');
+    }
+  });
+}
+
+initAuth();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
