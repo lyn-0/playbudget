@@ -1005,9 +1005,9 @@ function renderHome() {
     ${warn}
   `;
 
-  // カテゴリ別
+  // カテゴリ別（支出あり or 予算設定済みのカテゴリを表示）
   const usedCats = S.categories
-    .filter(c => catSpent(c.id) > 0)
+    .filter(c => catSpent(c.id) > 0 || (S.catBudgets?.[c.id] || 0) > 0)
     .sort((a,b) => catSpent(b.id) - catSpent(a.id));
 
   const catsEl = document.getElementById('home-cats');
