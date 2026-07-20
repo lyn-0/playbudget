@@ -186,6 +186,18 @@
     .cat-bar-fill  { height: 100%; border-radius: 4px; transition: width .4s; }
     .cat-amount { font-size: 14px; font-weight: 700; width: 72px; text-align: right; flex-shrink: 0; }
 
+    /* 予算設定済みカテゴリの表示 */
+    .cat-row-budget { align-items: flex-start; }
+    .cat-budget-info { flex: 1; min-width: 0; }
+    .cat-budget-top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 5px;
+    }
+    .cat-row-budget .cat-name-sm { width: auto; }
+    .cat-row-budget .cat-amount { width: auto; }
+    .cat-bdg-total { font-size: 11px; font-weight: 600; color: var(--text2); }
+    .cat-bdg-status { font-size: 11px; color: var(--text2); margin-top: 4px; text-align: right; }
+
     /* =====================================================
        支出リスト
     ===================================================== */
@@ -1003,8 +1015,35 @@ function renderHome() {
     catsEl.style.display = 'block';
     catsEl.innerHTML = `<div class="sec-title">カテゴリ別</div>` +
       usedCats.map(c => {
-        const sp = catSpent(c.id);
-        const r  = S.budget > 0 ? Math.min(sp/S.budget,1) : 0;
+        const sp  = catSpent(c.id);
+        const bdg = S.catBudgets?.[c.id] || 0;
+
+        if (bdg > 0) {
+          // 予算設定済み：予算に対する進捗を表示
+          const r    = Math.min(sp / bdg, 1);
+          const over = sp > bdg;
+          const barColor = over ? 'var(--red)' : (r >= 0.8 ? 'var(--orange)' : c.color);
+          const status = over
+            ? `<span style="color:var(--red);font-weight:700">${fmt(sp - bdg)} オーバー</span>`
+            : `残り ${fmt(bdg - sp)}`;
+          return `
+            <div class="cat-row cat-row-budget">
+              <div class="cat-icon-sm" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+              <div class="cat-budget-info">
+                <div class="cat-budget-top">
+                  <span class="cat-name-sm">${c.name}</span>
+                  <span class="cat-amount">${fmt(sp)} <span class="cat-bdg-total">/ ${fmt(bdg)}</span></span>
+                </div>
+                <div class="cat-bar-track">
+                  <div class="cat-bar-fill" style="width:${r*100}%;background:${barColor}"></div>
+                </div>
+                <div class="cat-bdg-status">${status}</div>
+              </div>
+            </div>`;
+        }
+
+        // 予算未設定：従来どおり全体予算比のバー
+        const r = S.budget > 0 ? Math.min(sp/S.budget,1) : 0;
         return `
           <div class="cat-row">
             <div class="cat-icon-sm" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
