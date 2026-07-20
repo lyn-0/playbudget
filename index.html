@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>遊び代管理</title>
+
+  <!-- PWA設定 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="遊び代">
+
+  <style>
+    /* =====================================================
+       CSS変数 & リセット
+    ===================================================== */
+    :root {
+      --primary:       #7c3aed;
+      --primary-light: #ede9fe;
+      --green:         #10b981;
+      --orange:        #f59e0b;
+      --red:           #ef4444;
+      --bg:            #f3f4f6;
+      --card:          #ffffff;
+      --text:          #111827;
+      --text2:         #6b7280;
+      --border:        #e5e7eb;
+      --tab-h:         68px;
+      --safe-b:        env(safe-area-inset-bottom, 0px);
+      --safe-t:        env(safe-area-inset-top, 44px);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100dvh;
+    }
+
+    /* =====================================================
+       タブバー
+    ===================================================== */
+    .tab-bar {
+      position: fixed;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      height: calc(var(--tab-h) + var(--safe-b));
+      padding-bottom: var(--safe-b);
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+      z-index: 100;
+    }
+
+    .tab-btn {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px;
+      background: none; border: none; cursor: pointer;
+      color: var(--text2); font-size: 10px; font-weight: 600;
+      padding: 8px 4px;
+      transition: color .2s;
+    }
+    .tab-btn.active { color: var(--primary); }
+    .tab-btn .ti { font-size: 22px; }
+
+    /* =====================================================
+       コンテンツエリア
+    ===================================================== */
+    .tab-content { display: none; min-height: 100dvh; padding-bottom: calc(var(--tab-h) + var(--safe-b) + 20px); }
+    .tab-content.active { display: block; }
+
+    .nav-bar {
+      position: sticky; top: 0;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: calc(var(--safe-t) + 8px) 20px 14px;
+      border-bottom: 1px solid var(--border);
+      z-index: 50;
+    }
+    .nav-bar h1 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+
+    .content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* =====================================================
+       カード
+    ===================================================== */
+    .card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 2px 14px rgba(0,0,0,.07);
+    }
+
+    /* =====================================================
+       予算カード
+    ===================================================== */
+    .budget-card { text-align: center; }
+    .month-lbl { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+    .remaining-lbl { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+    .remaining-amt {
+      font-size: 52px; font-weight: 900;
+      letter-spacing: -3px; line-height: 1.1;
+      margin-bottom: 20px;
+      transition: color .3s;
+    }
+    .remaining-amt.green  { color: var(--green); }
+    .remaining-amt.orange { color: var(--orange); }
+    .remaining-amt.red    { color: var(--red); }
+
+    .prog-track { background: #f3f4f6; border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 8px; }
+    .prog-fill  { height: 100%; border-radius: 8px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+    .prog-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); }
+
+    .warning {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-radius: 20px; margin-top: 12px;
+    }
+    .warning.orange { background: #fff7ed; color: #c2410c; }
+    .warning.red    { background: #fef2f2; color: #b91c1c; }
+
+    /* =====================================================
+       カテゴリ別
+    ===================================================== */
+    .sec-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+
+    .cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .cat-icon-sm {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+    .cat-name-sm { font-size: 13px; width: 62px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-bar-track { flex: 1; background: #f3f4f6; border-radius: 4px; height: 8px; overflow: hidden; }
+    .cat-bar-fill  { height: 100%; border-radius: 4px; transition: width .4s; }
+    .cat-amount { font-size: 14px; font-weight: 700; width: 72px; text-align: right; flex-shrink: 0; }
+
+    /* =====================================================
+       支出リスト
+    ===================================================== */
+    .expense-list { border-radius: 18px; overflow: hidden; background: white; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+    .expense-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .expense-item:last-child { border-bottom: none; }
+    .exp-icon {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .exp-info { flex: 1; min-width: 0; }
+    .exp-cat  { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+    .exp-note { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .exp-date { font-size: 11px; color: #9ca3af; }
+    .exp-amt  { font-size: 16px; font-weight: 800; flex-shrink: 0; }
+    .del-btn  { background: none; border: none; color: #ef4444; cursor: pointer; padding: 6px; font-size: 16px; flex-shrink: 0; }
+    .expense-item { cursor: pointer; transition: background .15s; }
+    .expense-item:active { background: #f9fafb; }
+    .receipt-tag { font-size: 10px; background: #e0e7ff; color: #4338ca; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
+
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text2); }
+    .empty-state .ei { font-size: 48px; opacity: .4; margin-bottom: 12px; }
+
+    /* =====================================================
+       フォーム
+    ===================================================== */
+    .form-sec { margin-bottom: 20px; }
+    .form-lbl {
+      font-size: 12px; font-weight: 700;
+      color: var(--text2); text-transform: uppercase; letter-spacing: .5px;
+      display: block; margin-bottom: 8px;
+    }
+
+    .amt-row {
+      display: flex; align-items: center; gap: 4px;
+      background: #f9fafb; border: 2px solid var(--border);
+      border-radius: 14px; padding: 14px 16px;
+      transition: border-color .2s;
+    }
+    .amt-row:focus-within { border-color: var(--primary); background: white; }
+    .yen { font-size: 26px; font-weight: 900; }
+    .amt-input {
+      flex: 1; border: none; background: transparent;
+      font-size: 30px; font-weight: 900; color: var(--text);
+      outline: none; width: 100%;
+    }
+    .amt-input::placeholder { color: #d1d5db; }
+
+    .cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .cat-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px 6px; border: 2px solid transparent;
+      border-radius: 16px; background: #f9fafb;
+      cursor: pointer; font-size: 11px; font-weight: 600;
+      color: var(--text2); transition: all .15s;
+    }
+    .cat-btn.sel { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+    .cat-btn-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+
+    .txt-input {
+      width: 100%; padding: 14px 16px;
+      border: 2px solid var(--border); border-radius: 14px;
+      font-size: 16px; outline: none;
+      background: #f9fafb; color: var(--text);
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    .txt-input:focus { border-color: var(--primary); background: white; }
+
+    .primary-btn {
+      width: 100%; padding: 16px;
+      background: var(--primary); color: white;
+      border: none; border-radius: 16px;
+      font-size: 17px; font-weight: 800; cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .primary-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+    .primary-btn:not(:disabled):active { transform: scale(.98); opacity: .9; }
+    .outline-btn {
+      width: 100%; padding: 15px;
+      background: white; color: var(--primary);
+      border: 2px solid var(--primary);
+      border-radius: 16px; font-size: 17px; font-weight: 800;
+      cursor: pointer; transition: all .15s;
+    }
+    .cancel-btn {
+      width: 100%; padding: 15px;
+      background: #e5e7eb; color: #374151;
+      border: none;
+      border-radius: 16px; font-size: 17px; font-weight: 800;
+      cursor: pointer; transition: all .15s;
+    }
+    .cancel-btn:active { background: #d1d5db; }
+
+    /* =====================================================
+       レシートスキャナー
+    ===================================================== */
+    .receipt-preview {
+      width: 100%; height: 210px;
+      background: #f3f4f6; border-radius: 18px;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; margin-bottom: 16px;
+    }
+    .receipt-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .receipt-ph { text-align: center; color: var(--text2); }
+    .receipt-ph .ri { font-size: 48px; opacity: .35; margin-bottom: 8px; }
+
+    .proc-overlay {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,.9);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px;
+      border-radius: 18px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #e5e7eb;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .amt-choice-list { border-radius: 16px; overflow: hidden; border: 2px solid var(--border); }
+    .amt-choice-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .amt-choice-item:last-child { border-bottom: none; }
+    .amt-choice-item.sel { background: var(--primary-light); }
+    .check {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+    .amt-choice-item.sel .check { background: var(--primary); border-color: var(--primary); color: white; }
+    .choice-num { font-size: 22px; font-weight: 800; }
+
+    #receipt-file { display: none; }
+
+    /* =====================================================
+       設定
+    ===================================================== */
+    .settings-row { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 8px rgba(0,0,0,.06); }
+    .settings-item {
+      display: flex; align-items: center; padding: 14px 16px;
+      border-bottom: 1px solid var(--border); gap: 12px;
+    }
+    .settings-item:last-child { border-bottom: none; }
+    .s-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .s-label { flex: 1; font-size: 16px; font-weight: 500; }
+    .s-value { font-size: 14px; color: var(--text2); }
+    .s-del { background: none; border: none; color: var(--red); cursor: pointer; padding: 6px; font-size: 18px; }
+
+    /* =====================================================
+       モーダル
+    ===================================================== */
+    .modal-bg {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 200;
+      align-items: flex-end;
+    }
+    .modal-bg.open { display: flex; }
+    .modal-sheet {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      padding: 16px 20px 0;
+      width: 100%; max-height: 90dvh; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .modal-sheet-body {
+      flex: 1; overflow-y: auto;
+    }
+    .modal-sheet-footer {
+      padding: 12px 0 calc(20px + var(--safe-b));
+      background: white;
+      position: sticky; bottom: 0;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .modal-handle { width: 36px; height: 4px; background: #e5e7eb; border-radius: 2px; margin: 0 auto 20px; }
+    .modal-title  { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+
+    /* アイコン・カラーグリッド */
+    .icon-grid  { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
+    .icon-opt {
+      font-size: 26px; padding: 8px; border-radius: 12px;
+      border: 2px solid transparent; background: #f3f4f6;
+      cursor: pointer; text-align: center; transition: all .15s;
+    }
+    .icon-opt.sel { border-color: var(--primary); background: var(--primary-light); }
+    .color-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .color-opt {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid transparent; cursor: pointer;
+      transition: transform .15s;
+    }
+    .color-opt.sel { border-color: #111; transform: scale(1.1); }
+
+    /* =====================================================
+       トースト
+    ===================================================== */
+    .toast {
+      position: fixed;
+      bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
+      left: 50%; transform: translateX(-50%) translateY(20px);
+      background: white; border-radius: 30px;
+      padding: 12px 24px;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.15);
+      font-size: 15px; font-weight: 700;
+      opacity: 0; pointer-events: none;
+      transition: opacity .3s, transform .3s;
+      z-index: 300; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<!-- レシート画像ファイル入力（非表示） -->
+<input type="file" id="receipt-file" accept="image/*" capture="environment">
+
+<!-- ====================================================
+     ホームタブ
+==================================================== -->
+<div class="tab-content active" id="tab-home">
+  <div class="nav-bar"><h1>🎮 遊び代管理</h1></div>
+  <div class="content">
+    <div id="home-budget"  class="card budget-card"></div>
+    <div id="home-cats"   class="card" style="display:none"></div>
+    <div>
+      <div class="sec-title">今月の支出</div>
+      <div id="home-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     追加タブ
+==================================================== -->
+<div class="tab-content" id="tab-add">
+  <div class="nav-bar"><h1>💰 支出を追加</h1></div>
+  <div class="content">
+    <div class="card">
+      <div class="form-sec">
+        <label class="form-lbl">金額</label>
+        <div class="amt-row">
+          <span class="yen">¥</span>
+          <input class="amt-input" type="number" id="add-amount" placeholder="0" inputmode="numeric" min="0">
+        </div>
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">カテゴリ</label>
+        <div class="cat-grid" id="add-cat-grid"></div>
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">メモ（任意）</label>
+        <input class="txt-input" type="text" id="add-note" placeholder="例: ランチ、映画チケット">
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">日時</label>
+        <input class="txt-input" type="datetime-local" id="add-date">
+      </div>
+      <button class="primary-btn" onclick="submitExpense()">支出を追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     レシートタブ
+==================================================== -->
+<div class="tab-content" id="tab-receipt">
+  <div class="nav-bar"><h1>📷 レシート読み取り</h1></div>
+  <div class="content">
+    <div class="card">
+      <div class="receipt-preview" id="receipt-preview">
+        <div class="receipt-ph">
+          <div class="ri">🧾</div>
+          <div style="font-size:14px">レシートを撮影してください</div>
+        </div>
+      </div>
+      <button class="primary-btn" onclick="document.getElementById('receipt-file').click()">
+        📸 レシートを撮影する
+      </button>
+    </div>
+
+    <div id="amounts-section" style="display:none">
+      <div class="card">
+        <div class="sec-title">💡 検出された金額</div>
+        <p style="font-size:13px;color:#6b7280;margin-bottom:12px">合計金額をタップして選んでください</p>
+        <div id="amounts-list" class="amt-choice-list"></div>
+      </div>
+    </div>
+
+    <div id="receipt-save" style="display:none">
+      <div class="card">
+        <div class="form-sec">
+          <label class="form-lbl">選択金額</label>
+          <div id="receipt-amt-disp" style="font-size:30px;font-weight:900;color:var(--primary)"></div>
+        </div>
+        <div class="form-sec">
+          <label class="form-lbl">カテゴリ</label>
+          <div class="cat-grid" id="receipt-cat-grid"></div>
+        </div>
+        <div class="form-sec">
+          <label class="form-lbl">メモ（任意）</label>
+          <input class="txt-input" type="text" id="receipt-note" placeholder="例: スーパーでの買い物">
+        </div>
+        <button class="primary-btn" onclick="saveReceiptExpense()">✅ 支出として保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     設定タブ
+==================================================== -->
+<div class="tab-content" id="tab-settings">
+  <div class="nav-bar"><h1>⚙️ 設定</h1></div>
+  <div class="content">
+    <div>
+      <label class="form-lbl">月の遊び代予算</label>
+      <div class="card">
+        <div class="amt-row" style="margin-bottom:14px">
+          <span class="yen">¥</span>
+          <input class="amt-input" type="number" id="s-budget" inputmode="numeric" min="0">
+        </div>
+        <button class="primary-btn" onclick="saveBudget()">この金額で設定する</button>
+        <p style="font-size:13px;color:#6b7280;text-align:center;margin-top:10px">
+          現在: <span id="s-budget-cur"></span>
+        </p>
+      </div>
+    </div>
+
+    <div>
+      <label class="form-lbl">カテゴリ管理</label>
+      <div class="settings-row" id="s-cat-list"></div>
+      <div style="margin-top:10px">
+        <button class="outline-btn" onclick="openCatModal()">＋ カテゴリを追加する</button>
+      </div>
+    </div>
+
+    <div>
+      <label class="form-lbl">アプリ情報</label>
+      <div class="settings-row">
+        <div class="settings-item">
+          <span class="s-label">バージョン</span>
+          <span class="s-value">1.0.0</span>
+        </div>
+        <div class="settings-item">
+          <span class="s-label">データ保存先</span>
+          <span class="s-value">このiPhone内</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     タブバー
+==================================================== -->
+<nav class="tab-bar">
+  <button class="tab-btn active" id="tb-home" onclick="switchTab('home')">
+    <span class="ti">🏠</span>ホーム
+  </button>
+  <button class="tab-btn" id="tb-add" onclick="switchTab('add')">
+    <span class="ti">➕</span>追加
+  </button>
+  <button class="tab-btn" id="tb-receipt" onclick="switchTab('receipt')">
+    <span class="ti">📷</span>レシート
+  </button>
+  <button class="tab-btn" id="tb-settings" onclick="switchTab('settings')">
+    <span class="ti">⚙️</span>設定
+  </button>
+</nav>
+
+<!-- ====================================================
+     カテゴリ追加モーダル
+==================================================== -->
+<div class="modal-bg" id="cat-modal" onclick="closeModal()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">カテゴリを追加</div>
+    <div class="modal-sheet-body">
+      <div class="form-sec">
+        <label class="form-lbl">カテゴリ名</label>
+        <input class="txt-input" type="text" id="new-cat-name" placeholder="例: コンビニ、スポーツ">
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">アイコン</label>
+        <div class="icon-grid" id="icon-grid"></div>
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">カラー</label>
+        <div class="color-grid" id="color-grid"></div>
+      </div>
+    </div>
+    <div class="modal-sheet-footer">
+      <button class="primary-btn" onclick="saveNewCat()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     支出編集モーダル
+==================================================== -->
+<div class="modal-bg" id="edit-modal" onclick="closeEditModal()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ 支出を編集</div>
+    <div class="modal-sheet-body">
+      <div class="form-sec">
+        <label class="form-lbl">金額</label>
+        <div class="amt-row">
+          <span class="yen">¥</span>
+          <input class="amt-input" type="number" id="edit-amount" inputmode="numeric" min="0">
+        </div>
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">カテゴリ</label>
+        <div class="cat-grid" id="edit-cat-grid"></div>
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">メモ（任意）</label>
+        <input class="txt-input" type="text" id="edit-note" placeholder="例: ランチ、映画チケット">
+      </div>
+      <div class="form-sec">
+        <label class="form-lbl">日時</label>
+        <input class="txt-input" type="datetime-local" id="edit-date">
+      </div>
+    </div>
+    <div class="modal-sheet-footer">
+      <button class="primary-btn" onclick="saveEditExpense()">💾 変更を保存する</button>
+      <button class="cancel-btn" onclick="closeEditModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tesseract.js (OCRエンジン) -->
+<script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<script>
+/* ==================================================
+   デフォルトデータ
+================================================== */
+const DEF_CATS = [
+  { id:'c1', name:'食事',         icon:'🍜', color:'#FF6B6B' },
+  { id:'c2', name:'エンタメ',     icon:'🎮', color:'#4ECDC4' },
+  { id:'c3', name:'ショッピング', icon:'🛍️', color:'#45B7D1' },
+  { id:'c4', name:'カフェ',       icon:'☕', color:'#96CEB4' },
+  { id:'c5', name:'交通',         icon:'🚃', color:'#F7DC6F' },
+  { id:'c6', name:'その他',       icon:'💬', color:'#BB8FCE' },
+];
+
+const ICONS = ['🍜','🍣','🍔','🍺','🎮','🎬','🎵','📚',
+               '🛍️','👗','☕','🏋️','⚽','🎨','✈️','🚃',
+               '💊','🌸','🐾','💡','🎁','🏠','💻','🎯'];
+
+const COLORS = ['#FF6B6B','#FF9F43','#FECA57','#96CEB4','#4ECDC4',
+                '#45B7D1','#5C7CFA','#BB8FCE','#F8BBD0','#74b9ff'];
+
+/* ==================================================
+   状態管理
+================================================== */
+let S = { budget: 30000, expenses: [], categories: [...DEF_CATS] };
+
+function save() { localStorage.setItem('pb2', JSON.stringify(S)); }
+function load() {
+  try {
+    const d = localStorage.getItem('pb2');
+    if (d) S = { ...S, ...JSON.parse(d) };
+  } catch(e) {}
+}
+
+/* ==================================================
+   ヘルパー
+================================================== */
+const fmt = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+
+function thisMonthExpenses() {
+  const now = new Date();
+  return S.expenses
+    .filter(e => {
+      const d = new Date(e.date);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    })
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
+}
+
+const totalSpent  = () => thisMonthExpenses().reduce((s,e) => s + e.amount, 0);
+const remaining   = () => S.budget - totalSpent();
+const usageRate   = () => S.budget > 0 ? Math.min(totalSpent() / S.budget, 1) : 0;
+const getCat      = id => S.categories.find(c => c.id === id) || DEF_CATS[5];
+const catSpent    = id => thisMonthExpenses().filter(e => e.categoryId === id).reduce((s,e) => s + e.amount, 0);
+const colorClass  = r  => r < .5 ? 'green' : r < .8 ? 'orange' : 'red';
+const gradient    = r  => r < .5 ? 'linear-gradient(90deg,#10b981,#34d399)'
+                        : r < .8 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)'
+                        :          'linear-gradient(90deg,#ef4444,#f87171)';
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function monthLabel() {
+  const d = new Date();
+  return `${d.getFullYear()}年${d.getMonth()+1}月`;
+}
+
+/* ==================================================
+   タブ切替
+================================================== */
+function switchTab(t) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('tb-'+t).classList.add('active');
+  if (t==='home')     renderHome();
+  if (t==='add')      renderAdd();
+  if (t==='receipt')  renderReceipt();
+  if (t==='settings') renderSettings();
+}
+
+/* ==================================================
+   ホーム描画
+================================================== */
+function renderHome() {
+  const rate = usageRate();
+  const rem  = remaining();
+  const spent = totalSpent();
+
+  // 予算カード
+  let warn = '';
+  if (rate >= 1)   warn = `<div class="warning red">⚠️ 今月の予算を超えています！</div>`;
+  else if (rate >= .8) warn = `<div class="warning orange">⚠️ 予算の80%を超えました</div>`;
+
+  document.getElementById('home-budget').innerHTML = `
+    <div class="month-lbl">${monthLabel()}</div>
+    <div class="remaining-lbl">残り予算</div>
+    <div class="remaining-amt ${colorClass(rate)}">${fmt(rem)}</div>
+    <div class="prog-track">
+      <div class="prog-fill" style="width:${rate*100}%;background:${gradient(rate)}"></div>
+    </div>
+    <div class="prog-labels">
+      <span>使用 ${fmt(spent)}</span>
+      <span>予算 ${fmt(S.budget)}</span>
+    </div>
+    ${warn}
+  `;
+
+  // カテゴリ別
+  const usedCats = S.categories
+    .filter(c => catSpent(c.id) > 0)
+    .sort((a,b) => catSpent(b.id) - catSpent(a.id));
+
+  const catsEl = document.getElementById('home-cats');
+  if (usedCats.length > 0) {
+    catsEl.style.display = 'block';
+    catsEl.innerHTML = `<div class="sec-title">カテゴリ別</div>` +
+      usedCats.map(c => {
+        const sp = catSpent(c.id);
+        const r  = S.budget > 0 ? Math.min(sp/S.budget,1) : 0;
+        return `
+          <div class="cat-row">
+            <div class="cat-icon-sm" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+            <div class="cat-name-sm">${c.name}</div>
+            <div class="cat-bar-track">
+              <div class="cat-bar-fill" style="width:${r*100}%;background:${c.color}"></div>
+            </div>
+            <div class="cat-amount">${fmt(sp)}</div>
+          </div>`;
+      }).join('');
+  } else {
+    catsEl.style.display = 'none';
+  }
+
+  // 支出リスト
+  const exps = thisMonthExpenses();
+  const listEl = document.getElementById('home-list');
+
+  if (exps.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="ei">📭</div>
+        <div>まだ支出がありません</div>
+        <div style="font-size:13px;margin-top:6px">「追加」タブから入力してみましょう</div>
+      </div>`;
+  } else {
+    listEl.innerHTML = `<div class="expense-list">` + exps.map(e => {
+      const c = getCat(e.categoryId);
+      const tag = e.isFromReceipt ? `<span class="receipt-tag">📷</span>` : '';
+      return `
+        <div class="expense-item" onclick="openEditModal('${e.id}')">
+          <div class="exp-icon" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+          <div class="exp-info">
+            <div class="exp-cat">${c.name}${tag}</div>
+            ${e.note ? `<div class="exp-note">${e.note}</div>` : ''}
+            <div class="exp-date">${fmtDate(e.date)}</div>
+          </div>
+          <div class="exp-amt">${fmt(e.amount)}</div>
+          <button class="del-btn" onclick="event.stopPropagation();delExpense('${e.id}')">✕</button>
+        </div>`;
+    }).join('') + `</div>`;
+  }
+}
+
+/* ==================================================
+   追加タブ描画
+================================================== */
+let addCatId = null;
+
+function renderAdd() {
+  if (!addCatId && S.categories.length > 0) addCatId = S.categories[0].id;
+
+  document.getElementById('add-cat-grid').innerHTML = S.categories.map(c => {
+    const sel = c.id === addCatId;
+    return `
+      <button class="cat-btn ${sel?'sel':''}" onclick="pickAddCat('${c.id}')">
+        <div class="cat-btn-icon" style="background:${c.color}${sel?'':'22'};color:${sel?'#fff':c.color}">${c.icon}</div>
+        ${c.name}
+      </button>`;
+  }).join('');
+
+  // デフォルト日時を「今」に設定
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  const dtEl = document.getElementById('add-date');
+  if (!dtEl.value) dtEl.value = now.toISOString().slice(0,16);
+}
+
+function pickAddCat(id) { addCatId = id; renderAdd(); }
+
+function submitExpense() {
+  const amt = parseFloat(document.getElementById('add-amount').value);
+  if (!amt || amt <= 0) { alert('金額を入力してください'); return; }
+  if (!addCatId) { alert('カテゴリを選択してください'); return; }
+
+  const dateVal = document.getElementById('add-date').value;
+  S.expenses.push({
+    id: Date.now().toString(),
+    amount: amt,
+    date: dateVal ? new Date(dateVal).toISOString() : new Date().toISOString(),
+    categoryId: addCatId,
+    note: document.getElementById('add-note').value.trim(),
+    isFromReceipt: false,
+  });
+  save();
+
+  // リセット
+  document.getElementById('add-amount').value = '';
+  document.getElementById('add-note').value   = '';
+  document.getElementById('add-date').value   = '';
+
+  toast('✅ 追加しました！');
+  setTimeout(() => switchTab('home'), 600);
+}
+
+/* ==================================================
+   レシートタブ
+================================================== */
+let rcCatId = null;
+let rcAmount = null;
+
+function renderReceipt() {
+  if (!rcCatId && S.categories.length > 0) rcCatId = S.categories[0].id;
+  document.getElementById('receipt-cat-grid').innerHTML = S.categories.map(c => {
+    const sel = c.id === rcCatId;
+    return `
+      <button class="cat-btn ${sel?'sel':''}" onclick="pickRcCat('${c.id}')">
+        <div class="cat-btn-icon" style="background:${c.color}${sel?'':'22'};color:${sel?'#fff':c.color}">${c.icon}</div>
+        ${c.name}
+      </button>`;
+  }).join('');
+}
+
+function pickRcCat(id) { rcCatId = id; renderReceipt(); }
+
+// カメラ撮影後の処理
+document.getElementById('receipt-file').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+  document.getElementById('receipt-preview').innerHTML = `
+    <img src="${url}" alt="レシート">
+    <div class="proc-overlay" id="proc">
+      <div class="spinner"></div>
+      <div style="font-size:14px;color:#6b7280;text-align:center">金額を読み取り中…<br><small>少々お待ちください</small></div>
+    </div>`;
+
+  document.getElementById('amounts-section').style.display = 'none';
+  document.getElementById('receipt-save').style.display    = 'none';
+
+  try {
+    const res = await Tesseract.recognize(file, 'jpn+eng', { logger: ()=>{} });
+    const amounts = extractAmounts(res.data.text);
+    document.getElementById('proc')?.remove();
+
+    if (amounts.length > 0) {
+      showAmountChoices(amounts);
+    } else {
+      document.getElementById('amounts-section').style.display = 'block';
+      document.getElementById('amounts-list').innerHTML = `
+        <div style="padding:24px;text-align:center;color:#6b7280">
+          <div style="font-size:36px;margin-bottom:8px">😅</div>
+          <div style="font-weight:700">金額を読み取れませんでした</div>
+          <div style="font-size:13px;margin-top:6px">明るい場所で再度撮影するか<br>「追加」タブから手動入力してください</div>
+        </div>`;
+    }
+  } catch(err) {
+    document.getElementById('proc')?.remove();
+    alert('読み取りに失敗しました。もう一度お試しください。');
+  }
+  e.target.value = '';
+});
+
+function extractAmounts(text) {
+  const found = new Set();
+  const pats = [
+    /合計\s*[¥￥]?\s*([\d,]+)/g,
+    /お合計\s*[¥￥]?\s*([\d,]+)/g,
+    /小計\s*[¥￥]?\s*([\d,]+)/g,
+    /[¥￥]\s*([\d,]+)/g,
+    /([\d,]+)\s*円/g,
+  ];
+  pats.forEach(p => {
+    const re = new RegExp(p.source, 'g');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const n = parseInt(m[1].replace(/,/g,''), 10);
+      if (n >= 10 && n < 1_000_000) found.add(n);
+    }
+  });
+  return [...found].sort((a,b) => b-a).slice(0,8);
+}
+
+function showAmountChoices(amounts) {
+  rcAmount = amounts[0];
+  document.getElementById('amounts-list').innerHTML = amounts.map(a => `
+    <div class="amt-choice-item ${a===rcAmount?'sel':''}" onclick="pickAmount(${a},this)">
+      <div class="check">${a===rcAmount?'✓':''}</div>
+      <div class="choice-num">${fmt(a)}</div>
+    </div>`).join('');
+  document.getElementById('amounts-section').style.display = 'block';
+  document.getElementById('receipt-amt-disp').textContent = fmt(rcAmount);
+  document.getElementById('receipt-save').style.display = 'block';
+  renderReceipt();
+}
+
+function pickAmount(a, el) {
+  rcAmount = a;
+  document.querySelectorAll('.amt-choice-item').forEach(i => { i.classList.remove('sel'); i.querySelector('.check').textContent=''; });
+  el.classList.add('sel');
+  el.querySelector('.check').textContent = '✓';
+  document.getElementById('receipt-amt-disp').textContent = fmt(a);
+}
+
+function saveReceiptExpense() {
+  if (!rcAmount)  { alert('金額を選択してください'); return; }
+  if (!rcCatId)   { alert('カテゴリを選択してください'); return; }
+
+  S.expenses.push({
+    id: Date.now().toString(),
+    amount: rcAmount,
+    date: new Date().toISOString(),
+    categoryId: rcCatId,
+    note: document.getElementById('receipt-note').value.trim(),
+    isFromReceipt: true,
+  });
+  save();
+
+  // リセット
+  rcAmount = null;
+  document.getElementById('receipt-preview').innerHTML = `
+    <div class="receipt-ph"><div class="ri">🧾</div><div style="font-size:14px">レシートを撮影してください</div></div>`;
+  document.getElementById('amounts-section').style.display = 'none';
+  document.getElementById('receipt-save').style.display    = 'none';
+  document.getElementById('receipt-note').value = '';
+
+  toast('✅ 保存しました！');
+  setTimeout(() => switchTab('home'), 600);
+}
+
+/* ==================================================
+   設定タブ描画
+================================================== */
+function renderSettings() {
+  document.getElementById('s-budget').value    = S.budget;
+  document.getElementById('s-budget-cur').textContent = fmt(S.budget);
+
+  document.getElementById('s-cat-list').innerHTML = S.categories.map(c => `
+    <div class="settings-item">
+      <div class="s-icon" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+      <div class="s-label">${c.name}</div>
+      <button class="s-del" onclick="delCat('${c.id}')">✕</button>
+    </div>`).join('');
+}
+
+function saveBudget() {
+  const v = parseFloat(document.getElementById('s-budget').value);
+  if (!v || v <= 0) { alert('正しい金額を入力してください'); return; }
+  S.budget = v; save(); renderSettings();
+  toast('💾 予算を保存しました！');
+}
+
+function delCat(id) {
+  if (S.categories.length <= 1) { alert('カテゴリは最低1つ必要です'); return; }
+  if (!confirm('このカテゴリを削除しますか？')) return;
+  S.categories = S.categories.filter(c => c.id !== id);
+  save(); renderSettings();
+}
+
+/* ==================================================
+   カテゴリ追加モーダル
+================================================== */
+let newIcon  = ICONS[0];
+let newColor = COLORS[0];
+
+function openCatModal() {
+  newIcon = ICONS[0]; newColor = COLORS[0];
+  document.getElementById('new-cat-name').value = '';
+
+  document.getElementById('icon-grid').innerHTML = ICONS.map(i => `
+    <div class="icon-opt ${i===newIcon?'sel':''}" onclick="pickIcon('${i}',this)">${i}</div>`).join('');
+
+  document.getElementById('color-grid').innerHTML = COLORS.map(c => `
+    <div class="color-opt ${c===newColor?'sel':''}" style="background:${c}" onclick="pickColor('${c}',this)"></div>`).join('');
+
+  document.getElementById('cat-modal').classList.add('open');
+}
+
+function pickIcon(i, el) {
+  newIcon = i;
+  document.querySelectorAll('.icon-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function pickColor(c, el) {
+  newColor = c;
+  document.querySelectorAll('.color-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function saveNewCat() {
+  const name = document.getElementById('new-cat-name').value.trim();
+  if (!name) { alert('カテゴリ名を入力してください'); return; }
+  S.categories.push({ id:'c_'+Date.now(), name, icon:newIcon, color:newColor });
+  save(); closeModal(); renderSettings();
+  toast('✅ カテゴリを追加しました！');
+}
+
+function closeModal() {
+  document.getElementById('cat-modal').classList.remove('open');
+}
+
+/* ==================================================
+   支出編集モーダル
+================================================== */
+let editingId  = null;
+let editCatId  = null;
+
+function openEditModal(id) {
+  const e = S.expenses.find(x => x.id === id);
+  if (!e) return;
+
+  editingId = id;
+  editCatId = e.categoryId;
+
+  document.getElementById('edit-amount').value = e.amount;
+  document.getElementById('edit-note').value   = e.note || '';
+
+  // 日時を datetime-local フォーマットに変換
+  const d = new Date(e.date);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  document.getElementById('edit-date').value = d.toISOString().slice(0,16);
+
+  renderEditCatGrid();
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function renderEditCatGrid() {
+  document.getElementById('edit-cat-grid').innerHTML = S.categories.map(c => {
+    const sel = c.id === editCatId;
+    return `
+      <button class="cat-btn ${sel?'sel':''}" onclick="pickEditCat('${c.id}')">
+        <div class="cat-btn-icon" style="background:${c.color}${sel?'':'22'};color:${sel?'#fff':c.color}">${c.icon}</div>
+        ${c.name}
+      </button>`;
+  }).join('');
+}
+
+function pickEditCat(id) { editCatId = id; renderEditCatGrid(); }
+
+function saveEditExpense() {
+  const amt = parseFloat(document.getElementById('edit-amount').value);
+  if (!amt || amt <= 0) { alert('金額を入力してください'); return; }
+  if (!editCatId) { alert('カテゴリを選択してください'); return; }
+
+  const dateVal = document.getElementById('edit-date').value;
+  const idx = S.expenses.findIndex(x => x.id === editingId);
+  if (idx === -1) return;
+
+  S.expenses[idx] = {
+    ...S.expenses[idx],
+    amount: amt,
+    categoryId: editCatId,
+    note: document.getElementById('edit-note').value.trim(),
+    date: dateVal ? new Date(dateVal).toISOString() : S.expenses[idx].date,
+  };
+
+  save();
+  closeEditModal();
+  renderHome();
+  toast('✏️ 更新しました！');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingId = null;
+}
+
+/* ==================================================
+   支出削除
+================================================== */
+function delExpense(id) {
+  if (!confirm('この支出を削除しますか？')) return;
+  S.expenses = S.expenses.filter(e => e.id !== id);
+  save(); renderHome();
+}
+
+/* ==================================================
+   トースト
+================================================== */
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ==================================================
+   初期化 & Service Worker登録
+================================================== */
+load();
+renderHome();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
