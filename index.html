@@ -1899,70 +1899,80 @@ function buildOcrRows(lines) {
 function parseCardRows(rows) {
   const hs = rows.map(r => r.h).filter(h => h > 0).sort((a, b) => a - b);
   const medH = hs.length ? hs[Math.floor(hs.length / 2)] : 20;
-  const entries = [];
-  let pend = null;   // 金額行の手前にある日付・店名の行
-  const near = row => pend && (row.y0 - pend.y1) < 1.6 * medH;
+  const WEEKDAY = /[（(]\s*[月火水木金土日祝]\s*[)）]/g;
   // 「店名として意味がない」文字列か（数字・記号を除いて2文字未満 ＝ 誤読の残りカス）
-  const weak = m => !m || m.replace(/[\d\s.,\-–—\/:：・。、|｜'"`~™()（）\[\]]/g, '').length < 2;
+  const weak  = m => !m || m.replace(/[\d\s.,\-–—\/:：・。、|｜'"`~™()（）\[\]]/g, '').length < 2;
+  // 店名ではない補足テキスト（見出し・支払方法など）
+  const noise = m => CARD_KW_HEADER.test(m) || /回払い|リボ|分割|ボーナス|一括|確定|未確定|利用分/.test(m);
   // スクショ全体に「¥＋数字」が一つも無いアプリ（1,200円 形式）のときだけ「円」付きも金額として認める
   const hasYen = rows.some(r => /¥\s*-?\s*\d/.test(r.text));
 
-  for (const row of rows) {
-    let s = row.text.replace(/[（(]\s*[月火水木金土日祝]\s*[)）]/g, ' ');
+  // テキストから日付・金額を取り除いて店名候補にする
+  const stripToText = t => {
+    let s = t.replace(WEEKDAY, ' ');
+    const d = extractCardDate(s); if (d) s = s.replace(d.raw, ' ');
+    const a = extractCardAmount(s, !hasYen); if (a) s = s.slice(0, a.idx) + ' ' + s.slice(a.idx + a.raw.length);
+    s = cleanMerchant(s);
+    return (weak(s) || noise(s)) ? '' : s;
+  };
+
+  // 1. 各行を解析（行全体と、行を構成するOCRパーツごと）
+  const infos = rows.map(row => {
+    let s = row.text.replace(WEEKDAY, ' ');
     const date = extractCardDate(s);
     if (date) s = s.replace(date.raw, ' ');
     const skip = CARD_KW_SKIP.test(s);
-    const amt = skip ? null : extractCardAmount(s, !hasYen);
+    const amt  = skip ? null : extractCardAmount(s, !hasYen);
     if (amt) s = s.slice(0, amt.idx) + ' ' + s.slice(amt.idx + amt.raw.length);
     let merchant = cleanMerchant(s);
-    if (weak(merchant)) merchant = '';
-    const isHeader = !amt && CARD_KW_HEADER.test(cleanMerchant(s));
+    if (weak(merchant) || noise(merchant)) merchant = '';
+    const parts = row.parts.map(p => ({ text: stripToText(normalizeOcrLine(p.text)), x0: p.x0, y0: p.y0 }));
+    return { row, date, amt, skip, merchant, parts };
+  });
 
-    if (skip || isHeader) { pend = null; continue; }
-
-    if (amt) {
-      const p = near(row) ? pend : null;
-      const e = {
-        date: date || (p && p.date) || null,
-        merchant: merchant || (p ? p.merchant.join(' ') : ''),
-        amount: amt.n, neg: amt.neg,
-        x0: p ? Math.min(p.x0, row.x0) : row.x0,
-        y0: p ? Math.min(p.y0, row.y0) : row.y0,
-        x1: p ? Math.max(p.x1, row.x1) : row.x1,
-        y1: p ? Math.max(p.y1, row.y1) : row.y1,
-        rowY0: row.y0, rowY1: row.y1,
-      };
-      // 日付も店名も無い「金額だけ」の行でも、直後に店名行が続くレイアウトがあるので一旦残す
-      entries.push(e);
-      pend = null;
-      continue;
+  // 2. 行を「明細ブロック」（金額を1つ含む、近接した行のまとまり）に分ける
+  const blocks = [];
+  let cur = null;
+  const newBlock = () => ({ rows: [], amt: null, date: null, hasText: false });
+  const closeBlock = () => { if (cur && cur.amt) blocks.push(cur); cur = null; };
+  for (const info of infos) {
+    if (info.skip) { if (info.amt) closeBlock(); continue; }   // 合計・請求などの行は境目。キーワードだけの行は無視
+    const gap = cur && cur.rows.length ? info.row.y0 - cur.rows[cur.rows.length - 1].row.y1 : 0;
+    if (!cur) cur = newBlock();
+    else if (gap > 1.6 * medH) { closeBlock(); cur = newBlock(); }
+    else if (cur.amt) {
+      // すでに金額を持つブロックに続く行：金額行なら次の明細。
+      // 文字行は店名がまだ無いときだけ、日付だけの行はブロックに日付がまだ無いときだけ取り込む
+      const dateOnly = !!info.date && !info.amt && !info.merchant;
+      const accept = gap <= 1.2 * medH && !info.amt && ((dateOnly && !cur.date) || (!dateOnly && !cur.hasText));
+      if (!accept) { closeBlock(); cur = newBlock(); }
     }
-
-    if (date) {
-      pend = { date, merchant: merchant ? [merchant] : [], x0: row.x0, y0: row.y0, x1: row.x1, y1: row.y1 };
-      continue;
-    }
-
-    if (merchant) {
-      const last = entries[entries.length - 1];
-      // 「日付+金額」の行の直後に店名だけの行が来るレイアウト
-      if (last && !last.merchant && !pend && (row.y0 - last.y1) < 1.2 * medH) {
-        last.merchant = merchant;
-        last.y1 = Math.max(last.y1, row.y1);
-        last.x0 = Math.min(last.x0, row.x0); last.x1 = Math.max(last.x1, row.x1);
-        continue;
-      }
-      if (near(row)) {
-        pend.merchant.push(merchant);
-        pend.y1 = Math.max(pend.y1, row.y1);
-        pend.x0 = Math.min(pend.x0, row.x0); pend.x1 = Math.max(pend.x1, row.x1);
-      } else {
-        pend = { date: null, merchant: [merchant], x0: row.x0, y0: row.y0, x1: row.x1, y1: row.y1 };
-      }
-    }
+    cur.rows.push(info);
+    if (info.amt  && !cur.amt)  cur.amt  = info.amt;
+    if (info.date && !cur.date) cur.date = info.date;
+    if (info.merchant) cur.hasText = true;
   }
-  // 日付も店名も付かなかった「金額だけ」の明細は誤読の可能性が高いので落とす
-  return entries.filter(e => e.date || e.merchant);
+  closeBlock();
+
+  // 3. ブロックごとに明細を作る。店名は「ブロック内で最も上（同じ高さなら最も左）にあるテキスト」
+  return blocks.map(b => {
+    let best = null;
+    for (const info of b.rows) {
+      for (const p of info.parts) {
+        if (!p.text) continue;
+        if (!best || p.y0 < best.y0 - medH * 0.4 || (Math.abs(p.y0 - best.y0) <= medH * 0.4 && p.x0 < best.x0)) best = p;
+      }
+    }
+    const merchant = best ? best.text : b.rows.map(i => i.merchant).filter(Boolean)[0] || '';
+    const rs = b.rows.map(i => i.row);
+    const amtRow = (b.rows.find(i => i.amt) || b.rows[0]).row;
+    return {
+      date: b.date, merchant, amount: b.amt.n, neg: b.amt.neg,
+      x0: Math.min(...rs.map(r => r.x0)), y0: Math.min(...rs.map(r => r.y0)),
+      x1: Math.max(...rs.map(r => r.x1)), y1: Math.max(...rs.map(r => r.y1)),
+      rowY0: amtRow.y0, rowY1: amtRow.y1,
+    };
+  }).filter(e => e.date || e.merchant);   // 日付も店名も無い「金額だけ」は誤読の可能性が高いので落とす
 }
 
 // 明細が赤丸のどれかと重なっているか
