@@ -1590,11 +1590,12 @@ function imageToCanvas(img, maxSide) {
 
 // 「赤」と判定する画素か（HSV基準：赤〜やや朱色〜やや赤紫）
 function isRedPixel(r, g, b) {
+  // JPEG圧縮や細いペンで色が薄くなった赤（ピンク寄り）も拾えるよう、やや緩めの条件にしている
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  if (max !== r || max < 100) return false;
-  if ((max - min) / max < 0.45) return false;
+  if (max !== r || max < 90) return false;
+  if ((max - min) / max < 0.32) return false;
   const h = 60 * (g - b) / ((max - min) || 1);   // r が最大なので -60〜60 の範囲
-  return h >= -28 && h <= 22;
+  return h >= -32 && h <= 26;
 }
 
 // 画像の背景色（もっとも多い色）を推定
@@ -1668,10 +1669,10 @@ function detectRedCircles(canvas) {
   }
 
   // 囲み線らしい成分だけ残す（小さな赤文字・ベタ塗りのボタン・全面背景を除外）
-  const minW = Ws * 0.05, minH = Hs * 0.015;
+  const minW = Ws * 0.03, minH = Math.max(6, Hs * 0.008);
   const cand = comps.filter(c => {
     const w = c.x1 - c.x0 + 1, h = c.y1 - c.y0 + 1;
-    if (w < minW || h < minH || c.cnt < 60) return false;
+    if (w < minW || h < minH || c.cnt < 30) return false;
     if (w > Ws * 0.95 && h > Hs * 0.5) return false;
     const fill = c.cnt / (w * h);
     return fill < 0.7;
@@ -2063,7 +2064,10 @@ function cancelCardMode() {
   if (!cardBusy) resetCardImport();
 }
 
-async function startCardImport(mode) {
+async function startCardImport(mode, opts = {}) {
+  // opts.canvas       : 元画像を描いた canvas（アプリ内で赤丸を描いたときに渡される。ファイルの再読み込みを省く）
+  // opts.extraCircles : アプリ内で描いた赤丸の範囲（画像座標）。画素解析に頼らずそのまま使う
+  // opts.fromDraw     : 赤丸を描く画面から来たか（メッセージの出し分け用）
   document.getElementById('card-mode-modal').classList.remove('open');
   if (!cardFile || cardBusy) return;
   cardBusy = true;
@@ -2071,16 +2075,34 @@ async function startCardImport(mode) {
   showCardProgress('画像を解析中…');
 
   try {
-    const img    = await loadImageFromFile(cardFile);
-    const canvas = imageToCanvas(img, 3000);
-    const { circles } = detectRedCircles(canvas);
+    let img, canvas;
+    if (opts.canvas) {
+      img = opts.canvas;
+      canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+    } else {
+      img    = await loadImageFromFile(cardFile);
+      canvas = imageToCanvas(img, 3000);
+    }
+    // 画像に元から描かれている赤丸（写真アプリで描いたものなど）を検出し、アプリ内で描いた丸と合わせる
+    const detected = detectRedCircles(canvas).circles;
+    const circles  = mergeCircles(detected.concat(opts.extraCircles || []));
 
     if (mode === 'circle' && circles.length === 0) {
       hideCardProgress();
       drawCardPreview(img, canvas.width, canvas.height, [], []);
-      showCardMessage('赤丸が見つかりませんでした',
-        'はっきりした赤色のペンで囲んでから、もう一度お試しください。',
-        [{ label: '📋 全ての明細を取り込む', fn: () => startCardImport('all') }]);
+      if (opts.fromDraw) {
+        showCardMessage('赤丸が描かれていません',
+          '取り込みたい明細を指で囲んでから「この赤丸で取り込む」を押してください。',
+          [{ label: '⭕ もう一度囲む', fn: () => openCardDraw() },
+           { label: '📋 全ての明細を取り込む', fn: () => startCardImport('all') }]);
+      } else {
+        showCardMessage('赤丸が見つかりませんでした',
+          'はっきりした赤色のペンで囲んでから、もう一度お試しください。',
+          [{ label: '⭕ アプリ内で囲む', fn: () => openCardDraw() },
+           { label: '📋 全ての明細を取り込む', fn: () => startCardImport('all') }]);
+      }
       return;
     }
 
@@ -2114,7 +2136,7 @@ async function startCardImport(mode) {
     if (mode === 'circle') {
       const hit = entries.filter(e => e.circled);
       if (hit.length === 0 && entries.length > 0) {
-        notice = `赤丸を ${circles.length} 個検出しましたが、その中に明細が見つかりませんでした。読み取れた明細を未選択の状態で表示しています。`;
+        notice = `赤丸を ${circles.length} 個検出しましたが、その中に金額（¥）のある明細が見つかりませんでした。読み取れた明細を未選択の状態で表示しています。`;
       } else {
         entries = hit;
       }
@@ -2161,6 +2183,27 @@ async function startCardImport(mode) {
   } finally {
     cardBusy = false;
   }
+}
+
+// 重なり合う赤丸の範囲をひとつにまとめる
+function mergeCircles(list) {
+  const cs = list.map(c => ({ ...c }));
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < cs.length && !merged; i++) {
+      for (let j = i + 1; j < cs.length; j++) {
+        const a = cs[i], b = cs[j];
+        if (a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1) {
+          cs[i] = { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) };
+          cs.splice(j, 1);
+          merged = true;
+          break;
+        }
+      }
+    }
+  }
+  return cs;
 }
 
 function todayStr() {
@@ -2409,13 +2452,18 @@ function drawPoint(e) {
 
 // 描いた赤丸を画像に合成して、赤丸モードで取り込みを開始
 async function confirmCardDraw() {
-  const cv = document.getElementById('draw-canvas');
-  redrawDrawCanvas();
-  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
-  if (!blob) { alert('画像の作成に失敗しました。もう一度お試しください。'); return; }
-  cardFile = new File([blob], 'card-annotated.png', { type: 'image/png' });
+  // 描いた線の範囲（画像座標）をそのまま「赤丸」として渡す。画素解析に頼らないので確実に見つかる
+  const strokes = drawStrokes.concat(drawCur && drawCur.length > 1 ? [drawCur] : []);
+  const half = drawLineWidth() / 2;
+  const circles = strokes.map(pts => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+    return { x0: Math.floor(x0 - half), y0: Math.floor(y0 - half), x1: Math.ceil(x1 + half), y1: Math.ceil(y1 + half) };
+  });
+  const base = drawBase;
   closeCardDraw();
-  startCardImport('circle');
+  // OCRは線を描いていない元画像に対して行う（線で文字が欠けないため）
+  startCardImport('circle', { canvas: base, extraCircles: circles, fromDraw: true });
 }
 
 /* ==================================================
