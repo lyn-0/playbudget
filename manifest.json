@@ -1,11 +1,11 @@
 {
-  "name": "遊び代管理",
-  "short_name": "遊び代",
-  "description": "月の遊び代を管理するアプリ",
+  "name": "Yenly - 遊び代管理",
+  "short_name": "Yenly",
+  "description": "毎月の遊び代を、レシートやカード明細からさくっと記録できる家計アプリ",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#fdf5f7",
-  "theme_color": "#e8789a",
+  "background_color": "#F7F4F6",
+  "theme_color": "#F7F4F6",
   "orientation": "portrait",
   "icons": [
     {

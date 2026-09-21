@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>遊び代管理</title>
+  <title>Yenly</title>
 
   <!-- Firebase SDK -->
   <script type="module">
@@ -47,27 +47,30 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="icon" type="image/png" href="icon-192.png">
-  <meta name="theme-color" content="#e8789a">
+  <meta name="theme-color" content="#F7F4F6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="遊び代">
+  <meta name="apple-mobile-web-app-title" content="Yenly">
 
   <style>
     /* =====================================================
        CSS変数 & リセット
     ===================================================== */
     :root {
-      --primary:       #e8789a;
-      --primary-light: #fde8ef;
-      --primary-dark:  #c45c7c;
-      --green:         #6dbfa0;
-      --orange:        #e89a6d;
-      --red:           #e86d7a;
-      --bg:            #fdf5f7;
+      --primary:       #E4547F;
+      --primary-light: #FCE8EF;
+      --primary-dark:  #C33A64;
+      --accent:        #E6B53C;
+      --green:         #3FB98B;
+      --orange:        #F0A23C;
+      --red:           #E5484D;
+      --bg:            #F7F4F6;
       --card:          #ffffff;
-      --text:          #3d2533;
-      --text2:         #9e7a8a;
-      --border:        #f5dde6;
+      --ink:           #1E171B;
+      --text:          #1E171B;
+      --text2:         #8C7B83;
+      --border:        #EFE3E8;
+      --shadow:        0 1px 2px rgba(30,23,27,.04), 0 8px 24px rgba(30,23,27,.06);
       --tab-h:         68px;
       --safe-b:        env(safe-area-inset-bottom, 0px);
       --safe-t:        env(safe-area-inset-top, 44px);
@@ -76,7 +79,8 @@
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
       background: var(--bg);
       color: var(--text);
       max-width: 430px;
@@ -94,7 +98,7 @@
       width: 100%; max-width: 430px;
       height: calc(var(--tab-h) + var(--safe-b));
       padding-bottom: var(--safe-b);
-      background: rgba(255,255,255,.95);
+      background: rgba(255,255,255,.92);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
@@ -108,12 +112,18 @@
       align-items: center; justify-content: center;
       gap: 3px;
       background: none; border: none; cursor: pointer;
-      color: var(--text2); font-size: 10px; font-weight: 600;
+      color: var(--text2); font-size: 10.5px; font-weight: 700; letter-spacing: .1px;
       padding: 8px 4px;
       transition: color .2s;
     }
     .tab-btn.active { color: var(--primary); }
-    .tab-btn .ti { font-size: 22px; }
+    .tab-btn .ti {
+      width: 44px; height: 28px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s;
+    }
+    .tab-btn .ti svg { width: 22px; height: 22px; display: block; }
+    .tab-btn.active .ti { background: var(--primary-light); }
 
     /* =====================================================
        コンテンツエリア
@@ -123,14 +133,21 @@
 
     .nav-bar {
       position: sticky; top: 0;
-      background: rgba(255,255,255,.95);
+      background: rgba(247,244,246,.9);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      padding: calc(var(--safe-t) + 8px) 20px 14px;
+      padding: calc(var(--safe-t) + 8px) 20px 12px;
       border-bottom: 1px solid var(--border);
       z-index: 50;
     }
-    .nav-bar h1 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+    .nav-bar h1 { font-size: 20px; font-weight: 800; letter-spacing: -.3px; display: flex; align-items: center; gap: 8px; }
+    .brand { font-size: 22px !important; letter-spacing: -.6px !important; }
+    .brand-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      box-shadow: 0 2px 6px rgba(228,84,127,.35);
+      display: inline-block;
+    }
 
     .content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
 
@@ -141,24 +158,38 @@
       background: var(--card);
       border-radius: 20px;
       padding: 20px;
-      box-shadow: 0 2px 14px rgba(0,0,0,.07);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
     }
 
     /* =====================================================
        予算カード
     ===================================================== */
-    .budget-card { text-align: center; }
-    .month-lbl { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
-    .remaining-lbl { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+    .budget-card {
+      text-align: center;
+      color: white;
+      border: none;
+      background:
+        radial-gradient(120% 90% at 100% 0%, rgba(228,84,127,.45) 0%, rgba(228,84,127,0) 55%),
+        radial-gradient(80% 60% at 0% 100%, rgba(230,181,60,.22) 0%, rgba(230,181,60,0) 60%),
+        linear-gradient(160deg, #2A1F26 0%, #1E171B 100%);
+      box-shadow: 0 12px 32px rgba(30,23,27,.22);
+    }
+    .month-lbl {
+      font-size: 12px; font-weight: 700; letter-spacing: .8px;
+      color: rgba(255,255,255,.55); margin-bottom: 6px;
+    }
+    .remaining-lbl { font-size: 12px; color: rgba(255,255,255,.6); margin-bottom: 4px; letter-spacing: .3px; }
     .remaining-amt {
       font-size: 52px; font-weight: 900;
-      letter-spacing: -3px; line-height: 1.1;
-      margin-bottom: 20px;
+      letter-spacing: -2px; line-height: 1.1;
+      margin-bottom: 20px; color: white;
+      font-variant-numeric: tabular-nums;
       transition: color .3s;
     }
-    .remaining-amt.green  { color: var(--green); }
-    .remaining-amt.orange { color: var(--orange); }
-    .remaining-amt.red    { color: var(--red); }
+    .remaining-amt.green  { color: #ffffff; }
+    .remaining-amt.orange { color: #F5C26B; }
+    .remaining-amt.red    { color: #FF8B8B; }
 
     /* ドーナツ円グラフ */
     .donut-wrap {
@@ -175,33 +206,38 @@
     }
     .donut-center .remaining-amt { font-size: 26px; }
 
-    .prog-track { background: #fdeef3; border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 8px; }
+    .prog-track { background: var(--border); border-radius: 8px; height: 12px; overflow: hidden; margin-bottom: 8px; }
     .prog-fill  { height: 100%; border-radius: 8px; transition: width .5s cubic-bezier(.4,0,.2,1); }
-    .prog-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); }
+    .prog-labels {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: rgba(255,255,255,.65); font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      padding-top: 12px; border-top: 1px solid rgba(255,255,255,.1);
+    }
 
     .warning {
       display: inline-flex; align-items: center; gap: 6px;
-      font-size: 12px; font-weight: 600;
-      padding: 6px 14px; border-radius: 20px; margin-top: 12px;
+      font-size: 12px; font-weight: 700;
+      padding: 6px 14px; border-radius: 20px; margin-top: 14px;
     }
-    .warning.orange { background: #fff7ed; color: #c2410c; }
-    .warning.red    { background: #fef2f2; color: #b91c1c; }
+    .warning.orange { background: rgba(240,162,60,.18); color: #F5C26B; }
+    .warning.red    { background: rgba(229,72,77,.22); color: #FF9A9A; }
 
     /* =====================================================
        カテゴリ別
     ===================================================== */
-    .sec-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+    .sec-title { font-size: 15px; font-weight: 800; margin-bottom: 12px; letter-spacing: -.2px; color: var(--text); }
 
     .cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
     .cat-icon-sm {
-      width: 32px; height: 32px; border-radius: 50%;
+      width: 32px; height: 32px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       font-size: 15px; flex-shrink: 0;
     }
-    .cat-name-sm { font-size: 13px; width: 62px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cat-bar-track { flex: 1; background: #fdeef3; border-radius: 4px; height: 8px; overflow: hidden; }
+    .cat-name-sm { font-size: 13px; width: 78px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .cat-bar-track { flex: 1; background: var(--border); border-radius: 4px; height: 8px; overflow: hidden; }
     .cat-bar-fill  { height: 100%; border-radius: 4px; transition: width .4s; }
-    .cat-amount { font-size: 14px; font-weight: 700; width: 72px; text-align: right; flex-shrink: 0; }
+    .cat-amount { font-size: 14px; font-weight: 700; width: 72px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
     /* 予算設定済みカテゴリの表示 */
     .cat-row-budget { align-items: flex-start; }
@@ -218,108 +254,111 @@
     /* =====================================================
        支出リスト
     ===================================================== */
-    .expense-list { border-radius: 18px; overflow: hidden; background: white; box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+    .expense-list { border-radius: 20px; overflow: hidden; background: white; border: 1px solid var(--border); box-shadow: var(--shadow); }
     .expense-item {
       display: flex; align-items: center; gap: 12px;
       padding: 13px 16px;
-      border-bottom: 1px solid #fdeef3;
+      border-bottom: 1px solid var(--border);
     }
     .expense-item:last-child { border-bottom: none; }
     .exp-icon {
-      width: 42px; height: 42px; border-radius: 50%;
+      width: 42px; height: 42px; border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
       font-size: 18px; flex-shrink: 0;
     }
     .exp-info { flex: 1; min-width: 0; }
     .exp-cat  { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
     .exp-note { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .exp-date { font-size: 11px; color: #9ca3af; }
-    .exp-amt  { font-size: 16px; font-weight: 800; flex-shrink: 0; }
-    .del-btn  { background: none; border: none; color: #e86d7a; cursor: pointer; padding: 6px; font-size: 16px; flex-shrink: 0; }
+    .exp-date { font-size: 11px; color: #A89AA0; }
+    .exp-amt  { font-size: 16px; font-weight: 800; flex-shrink: 0; font-variant-numeric: tabular-nums; letter-spacing: -.3px; }
+    .del-btn  { background: none; border: none; color: #C9BCC2; cursor: pointer; padding: 6px; font-size: 14px; flex-shrink: 0; }
+    .del-btn:active { color: var(--red); }
     .expense-item { cursor: pointer; transition: background .15s; }
-    .expense-item:active { background: #fef7f9; }
-    .receipt-tag { font-size: 10px; background: #e0e7ff; color: #4338ca; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
+    .expense-item:active { background: #FBF6F8; }
+    .receipt-tag { font-size: 10px; background: #EEF0FF; color: #4F46E5; padding: 1px 6px; border-radius: 6px; font-weight: 700; }
 
     .empty-state { text-align: center; padding: 48px 24px; color: var(--text2); }
-    .empty-state .ei { font-size: 48px; opacity: .4; margin-bottom: 12px; }
+    .empty-state .ei { font-size: 40px; opacity: .35; margin-bottom: 12px; }
 
     /* =====================================================
        フォーム
     ===================================================== */
     .form-sec { margin-bottom: 20px; }
     .form-lbl {
-      font-size: 12px; font-weight: 700;
-      color: var(--text2); text-transform: uppercase; letter-spacing: .5px;
+      font-size: 11.5px; font-weight: 700;
+      color: var(--text2); text-transform: uppercase; letter-spacing: .6px;
       display: block; margin-bottom: 8px;
     }
 
     .amt-row {
       display: flex; align-items: center; gap: 4px;
-      background: #fef7f9; border: 2px solid var(--border);
+      background: #FBF8FA; border: 1.5px solid var(--border);
       border-radius: 14px; padding: 14px 16px;
-      transition: border-color .2s;
+      transition: border-color .2s, box-shadow .2s;
     }
-    .amt-row:focus-within { border-color: var(--primary); background: white; }
-    .yen { font-size: 26px; font-weight: 900; }
+    .amt-row:focus-within { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(228,84,127,.12); }
+    .yen { font-size: 24px; font-weight: 800; color: var(--text2); }
     .amt-input {
       flex: 1; border: none; background: transparent;
       font-size: 30px; font-weight: 900; color: var(--text);
-      outline: none; width: 100%;
+      outline: none; width: 100%; font-variant-numeric: tabular-nums; letter-spacing: -.5px;
     }
-    .amt-input::placeholder { color: #d4b0bc; }
+    .amt-input::placeholder { color: #D8CCD2; }
 
     .cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
     .cat-btn {
       display: flex; flex-direction: column; align-items: center; gap: 6px;
-      padding: 12px 6px; border: 2px solid transparent;
-      border-radius: 16px; background: #fef7f9;
-      cursor: pointer; font-size: 11px; font-weight: 600;
+      padding: 12px 6px; border: 1.5px solid var(--border);
+      border-radius: 16px; background: white;
+      cursor: pointer; font-size: 11px; font-weight: 700;
       color: var(--text2); transition: all .15s;
     }
-    .cat-btn.sel { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
-    .cat-btn-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .cat-btn.sel { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); }
+    .cat-btn-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 
     .txt-input {
       width: 100%; padding: 14px 16px;
-      border: 2px solid var(--border); border-radius: 14px;
+      border: 1.5px solid var(--border); border-radius: 14px;
       font-size: 16px; outline: none;
-      background: #fef7f9; color: var(--text);
-      transition: border-color .2s;
+      background: #FBF8FA; color: var(--text);
+      transition: border-color .2s, box-shadow .2s;
       -webkit-appearance: none;
     }
-    .txt-input:focus { border-color: var(--primary); background: white; }
+    .txt-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(228,84,127,.12); }
 
     .primary-btn {
       width: 100%; padding: 16px;
-      background: var(--primary); color: white;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white;
       border: none; border-radius: 16px;
-      font-size: 17px; font-weight: 800; cursor: pointer;
-      transition: opacity .2s, transform .1s;
+      font-size: 16px; font-weight: 800; cursor: pointer; letter-spacing: .2px;
+      box-shadow: 0 6px 16px rgba(228,84,127,.28);
+      transition: opacity .2s, transform .1s, box-shadow .2s;
     }
-    .primary-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+    .primary-btn:disabled { background: #D9D2D5; box-shadow: none; cursor: not-allowed; }
     .primary-btn:not(:disabled):active { transform: scale(.98); opacity: .9; }
     .outline-btn {
       width: 100%; padding: 15px;
-      background: white; color: var(--primary);
-      border: 2px solid var(--primary);
-      border-radius: 16px; font-size: 17px; font-weight: 800;
+      background: white; color: var(--primary-dark);
+      border: 1.5px solid #F3C9D8;
+      border-radius: 16px; font-size: 16px; font-weight: 800;
       cursor: pointer; transition: all .15s;
     }
+    .outline-btn:active { background: var(--primary-light); }
     .cancel-btn {
       width: 100%; padding: 15px;
-      background: #f5dde6; color: #9e7a8a;
+      background: var(--bg); color: var(--text2);
       border: none;
-      border-radius: 16px; font-size: 17px; font-weight: 800;
+      border-radius: 16px; font-size: 16px; font-weight: 800;
       cursor: pointer; transition: all .15s;
     }
-    .cancel-btn:active { background: #f0c8d8; }
+    .cancel-btn:active { background: var(--border); }
 
     /* =====================================================
        レシートスキャナー
     ===================================================== */
     .receipt-preview {
       width: 100%; height: 210px;
-      background: #fdeef3; border-radius: 18px;
+      background: #FBF6F8; border: 1.5px dashed #E6D3DB; border-radius: 18px;
       overflow: hidden;
       display: flex; align-items: center; justify-content: center;
       position: relative; margin-bottom: 16px;
@@ -344,7 +383,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .amt-choice-list { border-radius: 16px; overflow: hidden; border: 2px solid var(--border); }
+    .amt-choice-list { border-radius: 16px; overflow: hidden; border: 1.5px solid var(--border); }
     .amt-choice-item {
       display: flex; align-items: center; gap: 14px;
       padding: 14px 16px; cursor: pointer;
@@ -370,18 +409,18 @@
     ===================================================== */
     .card-preview {
       width: 100%; min-height: 200px; max-height: 380px;
-      background: #fdeef3; border-radius: 18px;
+      background: #FBF6F8; border: 1.5px dashed #E6D3DB; border-radius: 18px;
       overflow: hidden;
       display: flex; align-items: center; justify-content: center;
       position: relative; margin-bottom: 16px;
     }
     .card-preview canvas, .card-preview img { width: 100%; max-height: 380px; object-fit: contain; display: block; }
-    .card-tag { font-size: 10px; background: #dcfce7; color: #15803d; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
+    .card-tag { font-size: 10px; background: #E6F7EF; color: #15803d; padding: 1px 6px; border-radius: 6px; font-weight: 700; }
 
     .mode-btn {
       width: 100%; display: flex; align-items: center; gap: 14px;
-      padding: 16px; border: 2px solid var(--border); border-radius: 16px;
-      background: #fef7f9; cursor: pointer; text-align: left;
+      padding: 16px; border: 1.5px solid var(--border); border-radius: 16px;
+      background: white; cursor: pointer; text-align: left;
       margin-bottom: 10px; transition: all .15s; color: var(--text);
     }
     .mode-btn:active { border-color: var(--primary); background: var(--primary-light); }
@@ -398,13 +437,13 @@
     .imp-msg button { margin-top: 10px; }
     .imp-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
     .mini-btn {
-      background: #fef7f9; border: 2px solid var(--border); border-radius: 10px;
+      background: white; border: 1.5px solid var(--border); border-radius: 10px;
       padding: 7px 10px; font-size: 12px; font-weight: 700; color: var(--text2); cursor: pointer;
     }
     .mini-btn:active { border-color: var(--primary); color: var(--primary); }
     .imp-select {
-      border: 2px solid var(--border); border-radius: 10px; padding: 7px 10px;
-      font-size: 13px; background: #fef7f9; color: var(--text); outline: none;
+      border: 1.5px solid var(--border); border-radius: 10px; padding: 7px 10px;
+      font-size: 13px; background: #FBF8FA; color: var(--text); outline: none;
       -webkit-appearance: none; appearance: none;
     }
     .imp-toolbar .imp-select { flex: 1; min-width: 120px; }
@@ -417,8 +456,8 @@
     .imp-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
     .imp-line { display: flex; align-items: center; gap: 8px; }
     .imp-date {
-      flex: 1; min-width: 0; border: 2px solid var(--border); border-radius: 10px;
-      padding: 7px 8px; font-size: 14px; background: #fef7f9; color: var(--text);
+      flex: 1; min-width: 0; border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 7px 8px; font-size: 14px; background: #FBF8FA; color: var(--text);
       outline: none; -webkit-appearance: none; appearance: none; font-family: inherit;
     }
     .imp-amt { display: flex; align-items: center; gap: 2px; font-weight: 900; font-size: 18px; flex-shrink: 0; }
@@ -429,8 +468,8 @@
     }
     .imp-amt input:focus { border-bottom-color: var(--primary); }
     .imp-note {
-      width: 100%; border: 2px solid var(--border); border-radius: 10px;
-      padding: 7px 10px; font-size: 14px; background: #fef7f9; color: var(--text); outline: none;
+      width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 7px 10px; font-size: 14px; background: #FBF8FA; color: var(--text); outline: none;
     }
     .imp-note:focus, .imp-date:focus, .imp-select:focus { border-color: var(--primary); background: white; }
     .imp-warn { font-size: 11px; color: #b45309; font-weight: 700; }
@@ -475,16 +514,17 @@
     /* =====================================================
        設定
     ===================================================== */
-    .settings-row { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 8px rgba(0,0,0,.06); }
+    .settings-row { background: white; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow); }
     .settings-item {
       display: flex; align-items: center; padding: 14px 16px;
       border-bottom: 1px solid var(--border); gap: 12px;
     }
     .settings-item:last-child { border-bottom: none; }
-    .s-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .s-label { flex: 1; font-size: 16px; font-weight: 500; }
+    .s-icon { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .s-label { flex: 1; font-size: 15px; font-weight: 600; }
     .s-value { font-size: 14px; color: var(--text2); }
-    .s-del { background: none; border: none; color: var(--red); cursor: pointer; padding: 6px; font-size: 18px; }
+    .s-del { background: none; border: none; color: #C9BCC2; cursor: pointer; padding: 6px; font-size: 16px; }
+    .s-del:active { color: var(--red); }
 
     /* =====================================================
        モーダル
@@ -511,14 +551,14 @@
       position: sticky; bottom: 0;
       display: flex; flex-direction: column; gap: 10px;
     }
-    .modal-handle { width: 36px; height: 4px; background: #f5dde6; border-radius: 2px; margin: 0 auto 20px; }
-    .modal-title  { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+    .modal-handle { width: 36px; height: 4px; background: #E6D9DF; border-radius: 2px; margin: 0 auto 20px; }
+    .modal-title  { font-size: 18px; font-weight: 800; margin-bottom: 20px; letter-spacing: -.2px; }
 
     /* アイコン・カラーグリッド */
     .icon-grid  { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
     .icon-opt {
       font-size: 26px; padding: 8px; border-radius: 12px;
-      border: 2px solid transparent; background: #fdeef3;
+      border: 1.5px solid var(--border); background: white;
       cursor: pointer; text-align: center; transition: all .15s;
     }
     .icon-opt.sel { border-color: var(--primary); background: var(--primary-light); }
@@ -536,34 +576,37 @@
     #login-screen {
       display: none;
       position: fixed; inset: 0;
-      background: linear-gradient(135deg, #e8789a 0%, #c45c7c 100%);
+      background:
+        radial-gradient(90% 60% at 100% 0%, rgba(228,84,127,.55) 0%, rgba(228,84,127,0) 60%),
+        radial-gradient(70% 50% at 0% 100%, rgba(230,181,60,.25) 0%, rgba(230,181,60,0) 60%),
+        linear-gradient(160deg, #241B20 0%, #1E171B 100%);
       z-index: 1000;
       align-items: center; justify-content: center;
       flex-direction: column;
       padding: 40px 32px;
     }
     #login-screen.show { display: flex; }
-    .login-logo { font-size: 64px; margin-bottom: 16px; }
+    .login-logo { margin-bottom: 22px; }
     .login-icon-img {
-      width: 100px; height: 100px;
-      border-radius: 24px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      width: 108px; height: 108px;
+      border-radius: 28px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08);
     }
-    .login-title { font-size: 28px; font-weight: 900; color: white; margin-bottom: 8px; letter-spacing: -1px; }
-    .login-sub   { font-size: 15px; color: rgba(255,255,255,.75); margin-bottom: 48px; text-align: center; }
-    .login-catch  { font-size: 20px; font-weight: 800; color: white; margin-bottom: 12px; text-align: center; letter-spacing: .5px; text-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .login-title { font-size: 40px; font-weight: 900; color: white; margin-bottom: 10px; letter-spacing: -1.5px; }
+    .login-sub   { font-size: 14px; color: rgba(255,255,255,.55); margin-bottom: 44px; text-align: center; line-height: 1.6; }
+    .login-catch  { font-size: 15px; font-weight: 600; color: rgba(255,255,255,.85); margin-bottom: 14px; text-align: center; letter-spacing: 1.5px; }
     .google-btn {
       display: flex; align-items: center; gap: 12px;
-      background: white; color: #374151;
+      background: white; color: #1E171B;
       border: none; border-radius: 16px;
       padding: 16px 28px; font-size: 16px; font-weight: 700;
-      cursor: pointer; width: 100%; justify-content: center;
-      box-shadow: 0 4px 24px rgba(0,0,0,.2);
+      cursor: pointer; width: 100%; max-width: 340px; justify-content: center;
+      box-shadow: 0 8px 28px rgba(0,0,0,.3);
       transition: transform .15s, box-shadow .15s;
     }
     .google-btn:active { transform: scale(.97); box-shadow: 0 2px 12px rgba(0,0,0,.2); }
     .google-icon { width: 24px; height: 24px; }
-    .login-note { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 20px; text-align: center; }
+    .login-note { font-size: 12px; color: rgba(255,255,255,.4); margin-top: 20px; text-align: center; }
 
     /* ナビバーのユーザーアバター */
     .nav-user {
@@ -573,7 +616,7 @@
     }
     .user-avatar {
       width: 34px; height: 34px; border-radius: 50%;
-      object-fit: cover; border: 2px solid var(--primary-light);
+      object-fit: cover; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,.12);
     }
     .user-avatar-ph {
       width: 34px; height: 34px; border-radius: 50%;
@@ -595,11 +638,11 @@
       position: fixed;
       bottom: calc(var(--tab-h) + var(--safe-b) + 20px);
       left: 50%; transform: translateX(-50%) translateY(20px);
-      background: white; border-radius: 30px;
-      padding: 12px 24px;
+      background: var(--ink); color: white; border-radius: 30px;
+      padding: 12px 22px;
       display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 4px 24px rgba(0,0,0,.15);
-      font-size: 15px; font-weight: 700;
+      box-shadow: 0 8px 28px rgba(30,23,27,.28);
+      font-size: 14px; font-weight: 700;
       opacity: 0; pointer-events: none;
       transition: opacity .3s, transform .3s;
       z-index: 300; white-space: nowrap;
@@ -622,7 +665,7 @@
     .month-nav-btn:disabled { opacity: .3; cursor: default; }
     .month-label-text { font-size: 18px; font-weight: 800; color: var(--text); min-width: 120px; text-align: center; }
 
-    .history-summary-total { font-size: 32px; font-weight: 900; color: var(--primary); }
+    .history-summary-total { font-size: 34px; font-weight: 900; color: var(--text); letter-spacing: -1.2px; font-variant-numeric: tabular-nums; }
     .history-summary-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
 
     .cat-breakdown-row {
@@ -634,7 +677,7 @@
       display: flex; align-items: center; gap: 8px;
     }
     .cat-breakdown-icon {
-      width: 28px; height: 28px; border-radius: 50%;
+      width: 28px; height: 28px; border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; flex-shrink: 0;
     }
@@ -654,15 +697,15 @@
     }
     .cat-budget-row:last-child { border-bottom: none; }
     .cat-budget-icon {
-      width: 30px; height: 30px; border-radius: 50%;
+      width: 30px; height: 30px; border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
       font-size: 15px; flex-shrink: 0;
     }
     .cat-budget-name { flex: 1; font-size: 14px; font-weight: 700; color: var(--text); }
     .cat-budget-input {
       width: 90px; padding: 6px 10px; border-radius: 10px;
-      border: 2px solid var(--border); font-size: 14px; font-weight: 700;
-      text-align: right; background: var(--bg); color: var(--text);
+      border: 1.5px solid var(--border); font-size: 14px; font-weight: 700;
+      text-align: right; background: #FBF8FA; color: var(--text); font-variant-numeric: tabular-nums;
       -webkit-appearance: none;
     }
     .cat-budget-input:focus { border-color: var(--primary); background: white; outline: none; }
@@ -672,16 +715,16 @@
     ===================================================== */
     #miichan-wrap {
       position: fixed;
-      left: 16px;
-      top: calc(var(--safe-t) + 64px);
-      z-index: 250;
-      display: flex; flex-direction: column; align-items: flex-start;
-      gap: 4px;
+      right: 14px;
+      bottom: calc(var(--tab-h) + var(--safe-b) + 10px);
+      z-index: 90;
+      display: flex; flex-direction: column; align-items: flex-end;
+      gap: 6px;
     }
     #miichan-wrap.hidden { display: none; }
     #miichan-svg {
-      width: 84px; height: auto; cursor: pointer;
-      filter: drop-shadow(0 4px 8px rgba(232,120,154,.25));
+      width: 76px; height: auto; cursor: pointer;
+      filter: drop-shadow(0 6px 10px rgba(30,23,27,.18));
       transition: transform .2s;
     }
     #miichan-svg:active { transform: scale(.92); }
@@ -692,12 +735,12 @@
     #miichan-svg.bounce { animation: miibounce .5s ease; }
     .miichan-bubble {
       background: white;
-      border: 2px solid var(--primary-light);
-      border-radius: 14px 14px 14px 4px;
+      border: 1px solid var(--border);
+      border-radius: 14px 14px 4px 14px;
       padding: 8px 12px;
       font-size: 12px; font-weight: 700; color: var(--text);
-      max-width: 180px; line-height: 1.4;
-      box-shadow: 0 3px 12px rgba(232,120,154,.2);
+      max-width: 200px; line-height: 1.4;
+      box-shadow: 0 6px 18px rgba(30,23,27,.10);
       opacity: 0; transform: translateY(6px);
       transition: opacity .3s, transform .3s;
       pointer-events: none;
@@ -709,10 +752,10 @@
 
 <!-- ログイン画面 -->
 <div id="login-screen">
-  <div class="login-logo"><img src="data:image/png;base64,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" class="login-icon-img" alt="遊び代管理"></div>
-  <div class="login-title">遊び代管理</div>
-  <div class="login-catch">遊びごころを、ファビュラスに管理。</div>
-  <div class="login-sub">Googleアカウントでログインして<br>支出を記録しましょう</div>
+  <div class="login-logo"><img class="login-icon-img" src="icon-192.png" alt="Yenly"></div>
+  <div class="login-title">Yenly</div>
+  <div class="login-catch">遊び代を、スマートに。</div>
+  <div class="login-sub">毎月の遊び代を、レシートやカード明細から<br>さくっと記録できる家計アプリ</div>
   <button class="google-btn" onclick="loginWithGoogle()">
     <svg class="google-icon" viewBox="0 0 24 24">
       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -738,13 +781,13 @@
 ==================================================== -->
 <div class="tab-content active" id="tab-home">
   <div class="nav-bar" style="position:relative">
-    <h1>🎮 遊び代管理</h1>
+    <h1 class="brand"><span class="brand-dot"></span>Yenly</h1>
     <div class="nav-user" id="nav-user"></div>
   </div>
   <div class="content">
     <div id="home-budget"  class="card budget-card"></div>
     <div id="home-cats"   class="card" style="display:none"></div>
-    <div>
+    <div style="padding-bottom:72px">
       <div class="sec-title">今月の支出</div>
       <div id="home-list"></div>
     </div>
@@ -755,7 +798,7 @@
      追加タブ
 ==================================================== -->
 <div class="tab-content" id="tab-add">
-  <div class="nav-bar"><h1>💰 支出を追加</h1></div>
+  <div class="nav-bar"><h1>支出を追加</h1></div>
   <div class="content">
     <div class="card">
       <div class="form-sec">
@@ -786,7 +829,7 @@
      レシートタブ
 ==================================================== -->
 <div class="tab-content" id="tab-receipt">
-  <div class="nav-bar"><h1>📷 レシート・カード履歴</h1></div>
+  <div class="nav-bar"><h1>レシート・カード履歴</h1></div>
   <div class="content">
     <div class="card">
       <div class="receipt-preview" id="receipt-preview">
@@ -796,13 +839,13 @@
         </div>
       </div>
       <button class="primary-btn" onclick="document.getElementById('receipt-file').click()">
-        📸 レシートを撮影する
+        レシートを撮影する
       </button>
     </div>
 
     <div id="amounts-section" style="display:none">
       <div class="card">
-        <div class="sec-title">💡 検出された金額</div>
+        <div class="sec-title">検出された金額</div>
         <p style="font-size:13px;color:#6b7280;margin-bottom:12px">合計金額をタップして選んでください</p>
         <div id="amounts-list" class="amt-choice-list"></div>
       </div>
@@ -822,12 +865,12 @@
           <label class="form-lbl">メモ（任意）</label>
           <input class="txt-input" type="text" id="receipt-note" placeholder="例: スーパーでの買い物">
         </div>
-        <button class="primary-btn" onclick="saveReceiptExpense()">✅ 支出として保存する</button>
+        <button class="primary-btn" onclick="saveReceiptExpense()">支出として保存する</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="sec-title">💳 カード利用履歴から取り込む</div>
+      <div class="sec-title">カード利用履歴から取り込む</div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.5">
         カードアプリの利用履歴のスクショを選ぶと、明細をまとめて登録できます。<br>
         赤いペンで囲んだ明細だけを取り込むこともできます。
@@ -839,13 +882,13 @@
         </div>
       </div>
       <button class="outline-btn" onclick="document.getElementById('card-file').click()">
-        🖼 利用履歴のスクショを選ぶ
+        利用履歴のスクショを選ぶ
       </button>
     </div>
 
     <div id="card-result" style="display:none">
       <div class="card">
-        <div class="sec-title">📋 読み取った明細</div>
+        <div class="sec-title">読み取った明細</div>
         <div class="imp-summary" id="card-summary"></div>
         <div id="card-msg"></div>
         <div class="imp-toolbar" id="card-toolbar">
@@ -854,7 +897,7 @@
           <select class="imp-select" id="card-bulk-cat" onchange="bulkCardCategory(this.value)"></select>
         </div>
         <div id="card-items"></div>
-        <button class="primary-btn" id="card-save-btn" style="margin-top:14px" onclick="saveCardItems()">✅ 選択した明細を保存する</button>
+        <button class="primary-btn" id="card-save-btn" style="margin-top:14px" onclick="saveCardItems()">選択した明細を保存する</button>
       </div>
     </div>
   </div>
@@ -864,7 +907,7 @@
      設定タブ
 ==================================================== -->
 <div class="tab-content" id="tab-settings">
-  <div class="nav-bar"><h1>⚙️ 設定</h1></div>
+  <div class="nav-bar"><h1>設定</h1></div>
   <div class="content">
     <div>
       <label class="form-lbl">月の遊び代予算</label>
@@ -902,7 +945,7 @@
       <div class="settings-row">
         <div class="settings-item">
           <span class="s-label">バージョン</span>
-          <span class="s-value">2.0.0</span>
+          <span class="s-value">3.0.0</span>
         </div>
         <div class="settings-item">
           <span class="s-label">データ保存先</span>
@@ -917,7 +960,7 @@
      履歴タブ
 ==================================================== -->
 <div class="tab-content" id="tab-history">
-  <div class="nav-bar"><h1>📅 履歴・分析</h1></div>
+  <div class="nav-bar"><h1>履歴・分析</h1></div>
   <div class="content">
     <!-- 月セレクター -->
     <div class="month-selector">
@@ -950,19 +993,19 @@
 ==================================================== -->
 <nav class="tab-bar">
   <button class="tab-btn active" id="tb-home" onclick="switchTab('home')">
-    <span class="ti">🏠</span>ホーム
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg></span>ホーム
   </button>
   <button class="tab-btn" id="tb-add" onclick="switchTab('add')">
-    <span class="ti">➕</span>追加
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.5v7M8.5 12h7"/></svg></span>追加
   </button>
   <button class="tab-btn" id="tb-history" onclick="switchTab('history')">
-    <span class="ti">📅</span>履歴
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V13M9.5 19.5V9M15 19.5v-4M20.5 19.5V5"/><path d="M3 21.5h18"/></svg></span>履歴
   </button>
   <button class="tab-btn" id="tb-receipt" onclick="switchTab('receipt')">
-    <span class="ti">📷</span>取り込み
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M7 12h10"/></svg></span>取り込み
   </button>
   <button class="tab-btn" id="tb-settings" onclick="switchTab('settings')">
-    <span class="ti">⚙️</span>設定
+    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg></span>設定
   </button>
 </nav>
 
@@ -999,7 +1042,7 @@
 <div class="modal-bg" id="edit-modal" onclick="closeEditModal()">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
-    <div class="modal-title">✏️ 支出を編集</div>
+    <div class="modal-title">支出を編集</div>
     <div class="modal-sheet-body">
       <div class="form-sec">
         <label class="form-lbl">金額</label>
@@ -1034,7 +1077,7 @@
 <div class="modal-bg" id="card-mode-modal" onclick="cancelCardMode()">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
-    <div class="modal-title">💳 取り込み方法を選んでください</div>
+    <div class="modal-title">取り込み方法を選んでください</div>
     <div class="modal-sheet-body">
       <button class="mode-btn" onclick="startCardImport('all')">
         <div class="mi">📋</div>
@@ -1251,7 +1294,7 @@ function renderHome() {
     <div class="month-lbl">${monthLabel()}</div>
     <div class="donut-wrap">
       <svg viewBox="0 0 200 200" class="donut-svg">
-        <circle cx="100" cy="100" r="${R}" fill="none" stroke="#fdeef3" stroke-width="24"/>
+        <circle cx="100" cy="100" r="${R}" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="24"/>
         <g transform="rotate(-90 100 100)">${arcs}</g>
       </svg>
       <div class="donut-center">
@@ -2265,7 +2308,7 @@ function renderCardItems() {
 function updateCardSaveBtn() {
   const n = cardItems.filter(i => i.on).length;
   const btn = document.getElementById('card-save-btn');
-  btn.textContent = n ? `✅ 選択した ${n} 件を保存する` : '取り込む明細を選択してください';
+  btn.textContent = n ? `選択した ${n} 件を保存する` : '取り込む明細を選択してください';
   btn.disabled = n === 0;
 }
 
