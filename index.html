@@ -434,6 +434,42 @@
     .imp-warn { font-size: 11px; color: #b45309; font-weight: 700; }
     .imp-hit  { font-size: 11px; color: #15803d; font-weight: 700; }
 
+    /* ---- 赤丸を描く画面 ---- */
+    .draw-modal {
+      display: none; position: fixed; inset: 0; z-index: 250;
+      background: #1f1a1d; color: white;
+      flex-direction: column;
+      width: 100%; max-width: 430px; margin: 0 auto;
+      padding-top: var(--safe-t);
+    }
+    .draw-modal.open { display: flex; }
+    .draw-head { padding: 10px 16px 6px; }
+    .draw-title { font-size: 17px; font-weight: 800; }
+    .draw-hint  { font-size: 12px; color: #d8c4cc; margin-top: 2px; line-height: 1.4; }
+    .draw-tools {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px 10px; flex-wrap: wrap;
+    }
+    .tool-btn {
+      background: rgba(255,255,255,.1); color: white; border: 1.5px solid rgba(255,255,255,.25);
+      border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .tool-btn.sel { background: var(--primary); border-color: var(--primary); }
+    .tool-btn:disabled { opacity: .35; }
+    .draw-zoom-lbl { font-size: 12px; color: #d8c4cc; min-width: 40px; text-align: center; }
+    .draw-area {
+      flex: 1; overflow: auto; background: #000;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+    #draw-canvas { display: block; touch-action: none; cursor: crosshair; }
+    #draw-canvas.pan { touch-action: pan-x pan-y; cursor: grab; }
+    .draw-foot {
+      padding: 10px 16px calc(12px + var(--safe-b));
+      background: #1f1a1d; display: flex; flex-direction: column; gap: 8px;
+    }
+    .draw-foot .cancel-btn { background: rgba(255,255,255,.12); color: white; padding: 12px; }
+
     /* =====================================================
        設定
     ===================================================== */
@@ -1005,17 +1041,43 @@
           <div class="md">スクショに写っている利用明細をすべて読み取ります</div>
         </div>
       </button>
-      <button class="mode-btn" onclick="startCardImport('circle')">
+      <button class="mode-btn" onclick="document.getElementById('card-mode-modal').classList.remove('open'); openCardDraw()">
         <div class="mi">⭕</div>
         <div>
           <div class="mt">赤丸で囲んだ明細だけ取り込む</div>
-          <div class="md">赤いペンで囲んだ行だけを読み取ります</div>
+          <div class="md">次の画面で、取り込みたい行を指で赤く囲みます（すでに赤丸を描いたスクショもOK）</div>
         </div>
       </button>
     </div>
     <div class="modal-sheet-footer">
       <button class="cancel-btn" onclick="cancelCardMode()">キャンセル</button>
     </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     カード履歴 赤丸を描く画面
+==================================================== -->
+<div class="draw-modal" id="card-draw-modal">
+  <div class="draw-head">
+    <div class="draw-title">⭕ 取り込みたい明細を囲む</div>
+    <div class="draw-hint">指で赤い丸を描いてください（いくつでもOK）。行の少し外側を囲むと読み取りやすくなります。<br>すでに赤丸を描いたスクショなら、そのまま「取り込む」を押してください。</div>
+  </div>
+  <div class="draw-tools">
+    <button class="tool-btn sel" id="draw-tool-pen" onclick="setDrawTool('pen')">✏️ 描く</button>
+    <button class="tool-btn" id="draw-tool-pan" onclick="setDrawTool('pan')">✋ 移動</button>
+    <button class="tool-btn" onclick="drawZoom(-1)">－</button>
+    <span class="draw-zoom-lbl" id="draw-zoom-lbl">100%</span>
+    <button class="tool-btn" onclick="drawZoom(1)">＋</button>
+    <button class="tool-btn" id="draw-undo-btn" onclick="drawUndo()">↩ 戻す</button>
+    <button class="tool-btn" id="draw-clear-btn" onclick="drawClear()">🗑 全消し</button>
+  </div>
+  <div class="draw-area" id="draw-area">
+    <canvas id="draw-canvas"></canvas>
+  </div>
+  <div class="draw-foot">
+    <button class="primary-btn" onclick="confirmCardDraw()">✅ この赤丸で取り込む</button>
+    <button class="cancel-btn" onclick="cancelCardDraw()">戻る</button>
   </div>
 </div>
 
@@ -2200,6 +2262,159 @@ async function saveCardItems() {
   resetCardImport();
   toast(`✅ ${n}件を保存しました！`);
   setTimeout(() => switchTab('home'), 600);
+}
+
+/* ---------- 赤丸を描く画面 ---------- */
+const DRAW_ZOOMS = [1, 1.5, 2, 3];
+let drawBase    = null;   // 元画像を描いた canvas（やり直し用）
+let drawStrokes = [];     // 描いた線（画像座標の点列）
+let drawCur     = null;   // 描いている途中の線
+let drawTool    = 'pen';
+let drawZoomIdx = 0;
+let drawPointer = null;   // 描画中のポインタID
+
+function drawLineWidth() { return Math.max(6, Math.round(Math.max(drawBase.width, drawBase.height) * 0.0045)); }
+
+async function openCardDraw() {
+  if (!cardFile) return;
+  try {
+    const img = await loadImageFromFile(cardFile);
+    drawBase = imageToCanvas(img, 3000);
+  } catch (e) {
+    alert('画像を読み込めませんでした。もう一度お試しください。');
+    resetCardImport();
+    return;
+  }
+  const cv = document.getElementById('draw-canvas');
+  cv.width = drawBase.width; cv.height = drawBase.height;
+  drawStrokes = []; drawCur = null; drawPointer = null;
+  drawZoomIdx = 0;
+  setDrawTool('pen');
+  document.getElementById('card-draw-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  applyDrawZoom();
+  redrawDrawCanvas();
+}
+
+function closeCardDraw() {
+  document.getElementById('card-draw-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function cancelCardDraw() {
+  closeCardDraw();
+  // 取り込み方法の選択に戻る
+  document.getElementById('card-mode-modal').classList.add('open');
+}
+
+function setDrawTool(t) {
+  drawTool = t;
+  document.getElementById('draw-tool-pen').classList.toggle('sel', t === 'pen');
+  document.getElementById('draw-tool-pan').classList.toggle('sel', t === 'pan');
+  document.getElementById('draw-canvas').classList.toggle('pan', t === 'pan');
+}
+
+function applyDrawZoom() {
+  const area = document.getElementById('draw-area');
+  const cv   = document.getElementById('draw-canvas');
+  const z    = DRAW_ZOOMS[drawZoomIdx];
+  // 画面幅にフィット × 倍率（縦横比は維持）
+  const w = Math.max(1, area.clientWidth) * z;
+  cv.style.width  = w + 'px';
+  cv.style.height = (w * cv.height / cv.width) + 'px';
+  document.getElementById('draw-zoom-lbl').textContent = Math.round(z * 100) + '%';
+}
+
+function drawZoom(dir) {
+  const area = document.getElementById('draw-area');
+  const cx = (area.scrollLeft + area.clientWidth / 2) / Math.max(1, area.scrollWidth);
+  const cy = (area.scrollTop  + area.clientHeight / 2) / Math.max(1, area.scrollHeight);
+  drawZoomIdx = Math.max(0, Math.min(DRAW_ZOOMS.length - 1, drawZoomIdx + dir));
+  applyDrawZoom();
+  // 拡大・縮小しても見ている場所が大きくズレないようにスクロール位置を合わせる
+  area.scrollLeft = cx * area.scrollWidth  - area.clientWidth / 2;
+  area.scrollTop  = cy * area.scrollHeight - area.clientHeight / 2;
+}
+
+function redrawDrawCanvas() {
+  const cv  = document.getElementById('draw-canvas');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(drawBase, 0, 0);
+  ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = drawLineWidth();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const s of drawStrokes) strokePath(ctx, s);
+  if (drawCur) strokePath(ctx, drawCur);
+  const has = drawStrokes.length > 0;
+  document.getElementById('draw-undo-btn').disabled  = !has;
+  document.getElementById('draw-clear-btn').disabled = !has;
+}
+
+function strokePath(ctx, pts) {
+  if (!pts.length) return;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  if (pts.length === 1) ctx.lineTo(pts[0].x + 0.1, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+}
+
+function drawUndo()  { drawStrokes.pop(); redrawDrawCanvas(); }
+function drawClear() { drawStrokes = []; redrawDrawCanvas(); }
+
+// 画面上の座標 → 画像座標
+function drawPoint(e) {
+  const cv = document.getElementById('draw-canvas');
+  const r  = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height };
+}
+
+(function setupDrawCanvas() {
+  const cv = document.getElementById('draw-canvas');
+  cv.addEventListener('pointerdown', e => {
+    if (drawTool !== 'pen') return;
+    if (drawPointer !== null) {      // 2本目の指が触れたら描くのをやめる（誤描画防止）
+      drawCur = null; drawPointer = null; redrawDrawCanvas(); return;
+    }
+    drawPointer = e.pointerId;
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    drawCur = [drawPoint(e)];
+    e.preventDefault();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (drawPointer !== e.pointerId || !drawCur) return;
+    const p = drawPoint(e);
+    const last = drawCur[drawCur.length - 1];
+    drawCur.push(p);
+    // 途中の線だけ差分描画（全体を描き直さない）
+    const ctx = cv.getContext('2d');
+    ctx.strokeStyle = '#ff3b30'; ctx.lineWidth = drawLineWidth();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    e.preventDefault();
+  });
+  const finish = e => {
+    if (drawPointer !== e.pointerId) return;
+    if (drawCur && drawCur.length > 1) drawStrokes.push(drawCur);
+    drawCur = null; drawPointer = null;
+    redrawDrawCanvas();
+  };
+  cv.addEventListener('pointerup', finish);
+  cv.addEventListener('pointercancel', finish);
+  window.addEventListener('resize', () => {
+    if (document.getElementById('card-draw-modal').classList.contains('open')) applyDrawZoom();
+  });
+})();
+
+// 描いた赤丸を画像に合成して、赤丸モードで取り込みを開始
+async function confirmCardDraw() {
+  const cv = document.getElementById('draw-canvas');
+  redrawDrawCanvas();
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  if (!blob) { alert('画像の作成に失敗しました。もう一度お試しください。'); return; }
+  cardFile = new File([blob], 'card-annotated.png', { type: 'image/png' });
+  closeCardDraw();
+  startCardImport('circle');
 }
 
 /* ==================================================
