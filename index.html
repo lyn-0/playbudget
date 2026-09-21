@@ -361,6 +361,78 @@
     .choice-num { font-size: 22px; font-weight: 800; }
 
     #receipt-file { display: none; }
+    #card-file { display: none; }
+
+    /* =====================================================
+       カード利用履歴スクショ取り込み
+    ===================================================== */
+    .card-preview {
+      width: 100%; min-height: 200px; max-height: 380px;
+      background: #fdeef3; border-radius: 18px;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; margin-bottom: 16px;
+    }
+    .card-preview canvas, .card-preview img { width: 100%; max-height: 380px; object-fit: contain; display: block; }
+    .card-tag { font-size: 10px; background: #dcfce7; color: #15803d; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
+
+    .mode-btn {
+      width: 100%; display: flex; align-items: center; gap: 14px;
+      padding: 16px; border: 2px solid var(--border); border-radius: 16px;
+      background: #fef7f9; cursor: pointer; text-align: left;
+      margin-bottom: 10px; transition: all .15s; color: var(--text);
+    }
+    .mode-btn:active { border-color: var(--primary); background: var(--primary-light); }
+    .mode-btn .mi { font-size: 28px; flex-shrink: 0; }
+    .mode-btn .mt { font-size: 16px; font-weight: 800; }
+    .mode-btn .md { font-size: 12px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+
+    .imp-summary { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
+    .imp-msg {
+      background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+      border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5; margin-bottom: 12px;
+    }
+    .imp-msg .imp-msg-t { font-weight: 800; margin-bottom: 4px; }
+    .imp-msg button { margin-top: 10px; }
+    .imp-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .mini-btn {
+      background: #fef7f9; border: 2px solid var(--border); border-radius: 10px;
+      padding: 7px 10px; font-size: 12px; font-weight: 700; color: var(--text2); cursor: pointer;
+    }
+    .mini-btn:active { border-color: var(--primary); color: var(--primary); }
+    .imp-select {
+      border: 2px solid var(--border); border-radius: 10px; padding: 7px 10px;
+      font-size: 13px; background: #fef7f9; color: var(--text); outline: none;
+      -webkit-appearance: none; appearance: none;
+    }
+    .imp-toolbar .imp-select { flex: 1; min-width: 120px; }
+
+    .imp-item { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .imp-item:last-child { border-bottom: none; }
+    .imp-item.off .imp-body { opacity: .45; }
+    .imp-chk { padding-top: 6px; flex-shrink: 0; }
+    .imp-chk input { width: 22px; height: 22px; accent-color: var(--primary); }
+    .imp-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .imp-line { display: flex; align-items: center; gap: 8px; }
+    .imp-date {
+      flex: 1; min-width: 0; border: 2px solid var(--border); border-radius: 10px;
+      padding: 7px 8px; font-size: 14px; background: #fef7f9; color: var(--text);
+      outline: none; -webkit-appearance: none; appearance: none; font-family: inherit;
+    }
+    .imp-amt { display: flex; align-items: center; gap: 2px; font-weight: 900; font-size: 18px; flex-shrink: 0; }
+    .imp-amt input {
+      width: 96px; border: none; border-bottom: 2px solid var(--border);
+      background: transparent; font-size: 18px; font-weight: 900; color: var(--text);
+      text-align: right; outline: none;
+    }
+    .imp-amt input:focus { border-bottom-color: var(--primary); }
+    .imp-note {
+      width: 100%; border: 2px solid var(--border); border-radius: 10px;
+      padding: 7px 10px; font-size: 14px; background: #fef7f9; color: var(--text); outline: none;
+    }
+    .imp-note:focus, .imp-date:focus, .imp-select:focus { border-color: var(--primary); background: white; }
+    .imp-warn { font-size: 11px; color: #b45309; font-weight: 700; }
+    .imp-hit  { font-size: 11px; color: #15803d; font-weight: 700; }
 
     /* =====================================================
        設定
@@ -620,6 +692,8 @@
 
 <!-- レシート画像ファイル入力（非表示） -->
 <input type="file" id="receipt-file" accept="image/*" capture="environment">
+<!-- カード利用履歴スクショ入力（非表示・ギャラリーから選択） -->
+<input type="file" id="card-file" accept="image/*">
 
 <!-- ====================================================
      ホームタブ
@@ -674,7 +748,7 @@
      レシートタブ
 ==================================================== -->
 <div class="tab-content" id="tab-receipt">
-  <div class="nav-bar"><h1>📷 レシート読み取り</h1></div>
+  <div class="nav-bar"><h1>📷 レシート・カード履歴</h1></div>
   <div class="content">
     <div class="card">
       <div class="receipt-preview" id="receipt-preview">
@@ -711,6 +785,38 @@
           <input class="txt-input" type="text" id="receipt-note" placeholder="例: スーパーでの買い物">
         </div>
         <button class="primary-btn" onclick="saveReceiptExpense()">✅ 支出として保存する</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">💳 カード利用履歴から取り込む</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+        カードアプリの利用履歴のスクショを選ぶと、明細をまとめて登録できます。<br>
+        赤いペンで囲んだ明細だけを取り込むこともできます。
+      </p>
+      <div class="card-preview" id="card-preview">
+        <div class="receipt-ph">
+          <div class="ri">💳</div>
+          <div style="font-size:14px">利用履歴のスクショを選んでください</div>
+        </div>
+      </div>
+      <button class="outline-btn" onclick="document.getElementById('card-file').click()">
+        🖼 利用履歴のスクショを選ぶ
+      </button>
+    </div>
+
+    <div id="card-result" style="display:none">
+      <div class="card">
+        <div class="sec-title">📋 読み取った明細</div>
+        <div class="imp-summary" id="card-summary"></div>
+        <div id="card-msg"></div>
+        <div class="imp-toolbar" id="card-toolbar">
+          <button class="mini-btn" onclick="setAllCardItems(true)">全選択</button>
+          <button class="mini-btn" onclick="setAllCardItems(false)">全解除</button>
+          <select class="imp-select" id="card-bulk-cat" onchange="bulkCardCategory(this.value)"></select>
+        </div>
+        <div id="card-items"></div>
+        <button class="primary-btn" id="card-save-btn" style="margin-top:14px" onclick="saveCardItems()">✅ 選択した明細を保存する</button>
       </div>
     </div>
   </div>
@@ -815,7 +921,7 @@
     <span class="ti">📅</span>履歴
   </button>
   <button class="tab-btn" id="tb-receipt" onclick="switchTab('receipt')">
-    <span class="ti">📷</span>レシート
+    <span class="ti">📷</span>取り込み
   </button>
   <button class="tab-btn" id="tb-settings" onclick="switchTab('settings')">
     <span class="ti">⚙️</span>設定
@@ -880,6 +986,35 @@
     <div class="modal-sheet-footer">
       <button class="primary-btn" onclick="saveEditExpense()">💾 変更を保存する</button>
       <button class="cancel-btn" onclick="closeEditModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     カード履歴 取り込み方法 選択モーダル
+==================================================== -->
+<div class="modal-bg" id="card-mode-modal" onclick="cancelCardMode()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💳 取り込み方法を選んでください</div>
+    <div class="modal-sheet-body">
+      <button class="mode-btn" onclick="startCardImport('all')">
+        <div class="mi">📋</div>
+        <div>
+          <div class="mt">全ての明細を取り込む</div>
+          <div class="md">スクショに写っている利用明細をすべて読み取ります</div>
+        </div>
+      </button>
+      <button class="mode-btn" onclick="startCardImport('circle')">
+        <div class="mi">⭕</div>
+        <div>
+          <div class="mt">赤丸で囲んだ明細だけ取り込む</div>
+          <div class="md">赤いペンで囲んだ行だけを読み取ります</div>
+        </div>
+      </button>
+    </div>
+    <div class="modal-sheet-footer">
+      <button class="cancel-btn" onclick="cancelCardMode()">キャンセル</button>
     </div>
   </div>
 </div>
@@ -1135,7 +1270,7 @@ function renderHome() {
   } else {
     listEl.innerHTML = `<div class="expense-list">` + exps.map(e => {
       const c = getCat(e.categoryId);
-      const tag = e.isFromReceipt ? `<span class="receipt-tag">📷</span>` : '';
+      const tag = e.isFromReceipt ? `<span class="receipt-tag">📷</span>` : e.isFromCard ? `<span class="card-tag">💳</span>` : '';
       return `
         <div class="expense-item" onclick="openEditModal('${e.id}')">
           <div class="exp-icon" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
@@ -1327,6 +1462,743 @@ async function saveReceiptExpense() {
   document.getElementById('receipt-note').value = '';
 
   toast('✅ 保存しました！');
+  setTimeout(() => switchTab('home'), 600);
+}
+
+/* ==================================================
+   カード利用履歴スクショ取り込み
+================================================== */
+let cardFile  = null;   // 選択された画像ファイル
+let cardItems = [];     // 読み取った明細候補
+let cardBusy  = false;
+
+// 合計・請求など「明細ではない行」を除外するキーワード
+const CARD_KW_SKIP   = /合計|請求|支払|ポイント|残高|利用可能|限度|締切|締め|件数|明細数|キャッシング|リボ|分割|手数料|年会費|お知らせ/;
+// 表の見出し行
+const CARD_KW_HEADER = /利用日|利用店|利用金額|ご利用先|ご利用日|加盟店|摘要|お店|店名|^金額$/;
+
+// 店名からカテゴリを推測するためのキーワード（カテゴリ名 → 正規表現）
+const CARD_CAT_KW = [
+  ['カフェ',       /カフェ|コーヒー|珈琲|スタ(ー)?バ|ドトール|タリーズ|コメダ|CAFE|COFFEE|STARBUCKS|DOUTOR|TULLY/i],
+  ['交通',         /JR|鉄道|メトロ|電鉄|バス|タクシー|SUICA|PASMO|ICOCA|高速|ETC|駐車|パーキング|UBER(?!\s*EATS)|新幹線|航空|ANA|JAL|ガソリン|ENEOS|出光|コスモ石油/i],
+  ['エンタメ',     /映画|シネマ|TOHO|NETFLIX|SPOTIFY|STEAM|NINTENDO|PLAYSTATION|ゲーム|APPLE\.COM|GOOGLE\s*PLAY|YOUTUBE|カラオケ|ライブ|チケット|DMM|HULU|DISNEY|PRIME\s*VIDEO|U-NEXT|ABEMA|書店|紀伊國屋|ジュンク堂|TSUTAYA|ゲオ|ボウリング|ラウンドワン|BANDAI|SEGA|TAITO/i],
+  ['食事',         /マクドナルド|マック|モスバーガー|ケンタッキー|KFC|すき家|吉野家|松屋|ラーメン|そば|うどん|寿司|スシロー|くら寿司|焼肉|居酒屋|食堂|レストラン|サイゼ|ガスト|デニーズ|UBER\s*EATS|出前館|WOLT|弁当|ピザ|ドミノ|バーガー|丸亀|ココイチ|COCO壱|カレー|定食|鳥貴族|串カツ|コンビニ|セブン|ローソン|ファミリーマート|ファミマ|ミニストップ|MCDONALD/i],
+  ['ショッピング', /AMAZON|アマゾン|楽天市場|RAKUTEN|ヤフー|YAHOO|ZOZO|ユニクロ|UNIQLO|無印|MUJI|ニトリ|IKEA|イオン|ドン・?キホーテ|ドンキ|ヨドバシ|ビックカメラ|ヤマダ|ドラッグ|マツモトキヨシ|ウエルシア|スギ薬局|ダイソー|セリア|ロフト|LOFT|ハンズ|しまむら|ABC-?MART|メルカリ|MERCARI|Qoo10|SHEIN|西友|ヨーカドー|ライフ|スーパー|成城石井|PAYPAY|楽天/i],
+];
+
+function defaultCardCategoryId() {
+  const other = S.categories.find(c => c.name === 'その他');
+  return (other || S.categories[0] || {}).id || null;
+}
+
+function guessCardCategory(text) {
+  const t = (text || '').trim();
+  if (!t) return defaultCardCategoryId();
+  // カテゴリ名がそのまま含まれていればそれを優先
+  const direct = S.categories.find(c => c.name && t.includes(c.name));
+  if (direct) return direct.id;
+  for (const [name, re] of CARD_CAT_KW) {
+    if (re.test(t)) {
+      const c = S.categories.find(x => x.name.includes(name));
+      if (c) return c.id;
+    }
+  }
+  return defaultCardCategoryId();
+}
+
+/* ---------- 画像ユーティリティ ---------- */
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload  = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('画像を読み込めませんでした')); };
+    img.src = url;
+  });
+}
+
+function imageToCanvas(img, maxSide) {
+  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width  = Math.max(1, Math.round(img.naturalWidth  * scale));
+  c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+
+// 「赤」と判定する画素か（HSV基準：赤〜やや朱色〜やや赤紫）
+function isRedPixel(r, g, b) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max !== r || max < 100) return false;
+  if ((max - min) / max < 0.45) return false;
+  const h = 60 * (g - b) / ((max - min) || 1);   // r が最大なので -60〜60 の範囲
+  return h >= -28 && h <= 22;
+}
+
+// 画像の背景色（もっとも多い色）を推定
+function estimateBackground(px, W, H) {
+  const step = Math.max(1, Math.floor(Math.sqrt((W * H) / 20000)));
+  const counts = new Map();
+  let best = null, bestN = 0;
+  for (let y = 0; y < H; y += step) {
+    for (let x = 0; x < W; x += step) {
+      const p = (y * W + x) * 4;
+      const key = ((px[p] >> 3) << 10) | ((px[p+1] >> 3) << 5) | (px[p+2] >> 3);
+      const n = (counts.get(key) || 0) + 1;
+      counts.set(key, n);
+      if (n > bestN) { bestN = n; best = key; }
+    }
+  }
+  if (best === null) return [255, 255, 255];
+  return [((best >> 10) & 31) * 8 + 4, ((best >> 5) & 31) * 8 + 4, (best & 31) * 8 + 4];
+}
+
+/**
+ * 赤丸（手書きの赤い囲み線）を検出する。
+ * - 縮小画像で赤画素の連結成分を求め、大きさ・塗りつぶし率で「囲み線」だけを残す
+ * - 見つけた囲み線は元の canvas から背景色で消す（OCR精度向上のため）
+ * 戻り値: { circles: [{x0,y0,x1,y1}] (canvas座標) }
+ */
+function detectRedCircles(canvas) {
+  const W = canvas.width, H = canvas.height;
+  const s = Math.min(1, 1400 / Math.max(W, H));
+  const Ws = Math.max(1, Math.round(W * s)), Hs = Math.max(1, Math.round(H * s));
+
+  const small = document.createElement('canvas');
+  small.width = Ws; small.height = Hs;
+  const sctx = small.getContext('2d');
+  sctx.drawImage(canvas, 0, 0, Ws, Hs);
+  const spx = sctx.getImageData(0, 0, Ws, Hs).data;
+
+  const N = Ws * Hs;
+  const mask = new Uint8Array(N);
+  for (let i = 0, p = 0; i < N; i++, p += 4) {
+    if (isRedPixel(spx[p], spx[p+1], spx[p+2])) mask[i] = 1;
+  }
+
+  // 連結成分ラベリング（8近傍）
+  const label = new Int32Array(N);
+  const comps = [];
+  const stack = [];
+  let nLabels = 0;
+  for (let i = 0; i < N; i++) {
+    if (!mask[i] || label[i]) continue;
+    nLabels++;
+    label[i] = nLabels;
+    stack.push(i);
+    let x0 = Ws, y0 = Hs, x1 = 0, y1 = 0, cnt = 0;
+    while (stack.length) {
+      const q = stack.pop();
+      const x = q % Ws, y = (q - x) / Ws;
+      cnt++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy; if (ny < 0 || ny >= Hs) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx; if (nx < 0 || nx >= Ws) continue;
+          const n = ny * Ws + nx;
+          if (mask[n] && !label[n]) { label[n] = nLabels; stack.push(n); }
+        }
+      }
+    }
+    comps.push({ id: nLabels, x0, y0, x1, y1, cnt });
+  }
+
+  // 囲み線らしい成分だけ残す（小さな赤文字・ベタ塗りのボタン・全面背景を除外）
+  const minW = Ws * 0.05, minH = Hs * 0.015;
+  const cand = comps.filter(c => {
+    const w = c.x1 - c.x0 + 1, h = c.y1 - c.y0 + 1;
+    if (w < minW || h < minH || c.cnt < 60) return false;
+    if (w > Ws * 0.95 && h > Hs * 0.5) return false;
+    const fill = c.cnt / (w * h);
+    return fill < 0.7;
+  });
+
+  // 途切れた線をまとめる（近接する成分を結合）
+  const pad = Math.max(4, Math.round(Math.max(Ws, Hs) * 0.012));
+  const parent = cand.map((_, i) => i);
+  const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  for (let i = 0; i < cand.length; i++) {
+    for (let j = i + 1; j < cand.length; j++) {
+      const a = cand[i], b = cand[j];
+      const hit = a.x0 - pad <= b.x1 && b.x0 - pad <= a.x1 && a.y0 - pad <= b.y1 && b.y0 - pad <= a.y1;
+      if (hit) parent[find(i)] = find(j);
+    }
+  }
+  const groups = new Map();
+  cand.forEach((c, i) => {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, { x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1, ids: [] });
+    const g = groups.get(r);
+    g.x0 = Math.min(g.x0, c.x0); g.y0 = Math.min(g.y0, c.y0);
+    g.x1 = Math.max(g.x1, c.x1); g.y1 = Math.max(g.y1, c.y1);
+    g.ids.push(c.id);
+  });
+
+  const accepted = new Uint8Array(nLabels + 1);
+  groups.forEach(g => g.ids.forEach(id => { accepted[id] = 1; }));
+
+  const circles = [...groups.values()].map(g => ({
+    x0: Math.floor(g.x0 / s), y0: Math.floor(g.y0 / s),
+    x1: Math.ceil((g.x1 + 1) / s), y1: Math.ceil((g.y1 + 1) / s),
+  }));
+
+  if (circles.length) {
+    // 囲み線の画素（縮小画像上で2画素膨張）の範囲を求める
+    let acc = new Uint8Array(N);
+    for (let i = 0; i < N; i++) if (label[i] && accepted[label[i]]) acc[i] = 1;
+    for (let pass = 0; pass < 2; pass++) {
+      const nx2 = new Uint8Array(N);
+      for (let y = 0; y < Hs; y++) {
+        for (let x = 0; x < Ws; x++) {
+          const i = y * Ws + x;
+          if (acc[i]) { nx2[i] = 1; continue; }
+          let on = 0;
+          for (let dy = -1; dy <= 1 && !on; dy++) {
+            const ny = y + dy; if (ny < 0 || ny >= Hs) continue;
+            for (let dx = -1; dx <= 1; dx++) {
+              const nx = x + dx; if (nx < 0 || nx >= Ws) continue;
+              if (acc[ny * Ws + nx]) { on = 1; break; }
+            }
+          }
+          nx2[i] = on;
+        }
+      }
+      acc = nx2;
+    }
+    const ctx = canvas.getContext('2d');
+    const full = ctx.getImageData(0, 0, W, H);
+    const px = full.data;
+    const bg = estimateBackground(px, W, H);
+
+    // 線の周辺では、縁の淡いピンク（アンチエイリアス）も含めて「赤っぽい」画素を消す
+    const redish = (r, g, b) => {
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      if (max !== r || max < 110) return false;
+      if ((max - min) / max < 0.10) return false;
+      const h = 60 * (g - b) / ((max - min) || 1);
+      return h >= -32 && h <= 26;
+    };
+    // 消す画素（元解像度）を先に確定
+    const erase = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      const sy = Math.min(Hs - 1, Math.floor(y * s));
+      for (let x = 0; x < W; x++) {
+        const sx = Math.min(Ws - 1, Math.floor(x * s));
+        if (!acc[sy * Ws + sx]) continue;
+        const p = (y * W + x) * 4;
+        if (redish(px[p], px[p+1], px[p+2])) erase[y * W + x] = 1;
+      }
+    }
+    // 線の下に隠れた文字が欠けないよう、周囲の画素から補間して埋める
+    // （左右 or 上下のうち近い方の2点を距離で加重平均。見つからなければ背景色）
+    const R = Math.max(12, Math.round(Math.max(W, H) * 0.02));
+    const src = new Uint8ClampedArray(px);   // 補間の参照元（書き換え前の画像）
+    const nearest = (x, y, dx, dy) => {
+      for (let k = 1; k <= R; k++) {
+        const nx = x + dx * k, ny = y + dy * k;
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) return null;
+        if (!erase[ny * W + nx]) return { k, p: (ny * W + nx) * 4 };
+      }
+      return null;
+    };
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (!erase[y * W + x]) continue;
+        const L = nearest(x, y, -1, 0), Rr = nearest(x, y, 1, 0);
+        const U = nearest(x, y, 0, -1), D  = nearest(x, y, 0, 1);
+        const hSpan = (L && Rr) ? L.k + Rr.k : Infinity;
+        const vSpan = (U && D)  ? U.k + D.k  : Infinity;
+        const p = (y * W + x) * 4;
+        let a = null, b = null;
+        if (hSpan <= vSpan && hSpan !== Infinity) { a = L; b = Rr; }
+        else if (vSpan !== Infinity)               { a = U; b = D; }
+        if (a && b) {
+          const wa = b.k / (a.k + b.k), wb = a.k / (a.k + b.k);
+          px[p]   = src[a.p]   * wa + src[b.p]   * wb;
+          px[p+1] = src[a.p+1] * wa + src[b.p+1] * wb;
+          px[p+2] = src[a.p+2] * wa + src[b.p+2] * wb;
+        } else {
+          px[p] = bg[0]; px[p+1] = bg[1]; px[p+2] = bg[2];
+        }
+      }
+    }
+    ctx.putImageData(full, 0, 0);
+  }
+
+  return { circles };
+}
+
+/* ---------- OCR結果の解析 ---------- */
+// 全角英数字・記号を半角に
+function toHalfWidth(str) {
+  return str.replace(/[０-９Ａ-Ｚａ-ｚ，．／：－]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+            .replace(/￥/g, '¥');
+}
+
+function normalizeOcrLine(t) {
+  let s = toHalfWidth(t);
+  // Tesseract日本語モデルの癖：数字が丸数字（①②…⑳⓪）、¥がバックスラッシュで出ることがある
+  s = s.replace(/[①-⑳]/g, ch => String(ch.charCodeAt(0) - 0x2460 + 1)).replace(/⓪/g, '0');
+  s = s.replace(/\\/g, '¥');
+  s = s.replace(/[　\t]+/g, ' ');
+  s = s.replace(/([^\x00-\x7F])\s+(?=[^\x00-\x7F])/g, '$1');   // 日本語文字の間に入る空白を詰める
+  s = s.replace(/(\d)\s*[,、]\s*(\d{3})(?!\d)/g, '$1,$2');   // 1, 200 → 1,200
+  s = s.replace(/(\d)\.(\d{3})(?!\d)/g, '$1,$2');            // 1.200 → 1,200
+  s = s.replace(/¥\s+(?=[-\d])/g, '¥');
+  return s.trim();
+}
+
+function inferYear(mo, d) {
+  const now = new Date();
+  let y = now.getFullYear();
+  const cand = new Date(y, mo - 1, d);
+  if (cand.getTime() - now.getTime() > 3 * 86400000) y--;   // 未来日付なら昨年扱い
+  return y;
+}
+
+function extractCardDate(s) {
+  let m = s.match(/(20\d{2})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})\s*日?/);
+  if (m) {
+    const y = +m[1], mo = +m[2], d = +m[3];
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return { y, mo, d, raw: m[0] };
+  }
+  m = s.match(/(?<![\d,¥])(\d{1,2})\s*[\/月]\s*(\d{1,2})\s*日?(?![\d,])/);
+  if (m) {
+    const mo = +m[1], d = +m[2];
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return { y: inferYear(mo, d), mo, d, raw: m[0] };
+  }
+  return null;
+}
+
+function extractCardAmount(s) {
+  // 「円」は M / F7 / ™ / スラッシュ などに誤読されやすいので、数字の後ろの1〜2文字のゴミは許容する
+  const pats = [
+    /¥\s*(-?\s*\d{1,3}(?:,\d{3})+|-?\s*\d+)/g,                       // ¥1,200
+    /(-?\d{1,3}(?:,\d{3})+|-?\d+)\s*円/g,                             // 1,200円
+    /(?<![\d.\/\-])(-?\d{1,3}(?:,\d{3})+)(?!\d)\s*[^\d\s]{0,2}\s*$/g,  // 行末の 1,200（+ゴミ）
+    /(?<![\d.\/\-])(-?\d{1,3}(?:,\d{3})+)(?!\d)/g,                    // 1,200
+    /(?<![\d.,\/\-:])(\d{3,7})(?![\d,.:])\s*[^\d\s]{0,2}\s*$/g,        // 行末の 1200（+ゴミ）
+  ];
+  for (const p of pats) {
+    const cands = [];
+    let m;
+    while ((m = p.exec(s)) !== null) {
+      const neg = /-/.test(m[1]);
+      const n = parseInt(m[1].replace(/[^\d]/g, ''), 10);
+      if (n >= 1 && n < 10_000_000) cands.push({ n, neg, raw: m[0], idx: m.index });
+    }
+    p.lastIndex = 0;
+    if (cands.length) return cands[cands.length - 1];   // 右端の候補を金額とみなす
+  }
+  return null;
+}
+
+function cleanMerchant(s) {
+  return s.replace(/[¥円]/g, ' ')
+          .replace(/[|｜]/g, ' ')
+          .replace(/([^\x00-\x7F])\s+(?=[^\x00-\x7F])/g, '$1')   // 日本語の間の空白を詰める
+          .replace(/\s{2,}/g, ' ')
+          .replace(/^[\s\-–—:：・.,、。]+|[\s\-–—:：・.,、。]+$/g, '')
+          .trim();
+}
+
+// OCRの「行」を同じ高さのものでまとめて、画面上の1行（＝1レコードの一部）に再構成
+function buildOcrRows(lines) {
+  const ls = (lines || [])
+    .filter(l => l && l.text && l.text.trim() && l.bbox)
+    .map(l => ({ text: l.text, x0: l.bbox.x0, y0: l.bbox.y0, x1: l.bbox.x1, y1: l.bbox.y1 }))
+    .sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1));
+  const rows = [];
+  for (const l of ls) {
+    const cy = (l.y0 + l.y1) / 2, h = l.y1 - l.y0;
+    const r = rows[rows.length - 1];
+    if (r) {
+      const rcy = (r.y0 + r.y1) / 2, rh = r.y1 - r.y0;
+      if (Math.abs(cy - rcy) < 0.5 * Math.min(h, rh) + 1) {
+        r.parts.push(l);
+        r.x0 = Math.min(r.x0, l.x0); r.y0 = Math.min(r.y0, l.y0);
+        r.x1 = Math.max(r.x1, l.x1); r.y1 = Math.max(r.y1, l.y1);
+        continue;
+      }
+    }
+    rows.push({ parts: [l], x0: l.x0, y0: l.y0, x1: l.x1, y1: l.y1 });
+  }
+  rows.forEach(r => {
+    r.parts.sort((a, b) => a.x0 - b.x0);
+    r.text = normalizeOcrLine(r.parts.map(p => p.text.trim()).join(' '));
+    r.h = r.y1 - r.y0;
+  });
+  return rows;
+}
+
+// 行の並びから「日付・店名・金額」の明細を組み立てる
+function parseCardRows(rows) {
+  const hs = rows.map(r => r.h).filter(h => h > 0).sort((a, b) => a - b);
+  const medH = hs.length ? hs[Math.floor(hs.length / 2)] : 20;
+  const entries = [];
+  let pend = null;   // 金額行の手前にある日付・店名の行
+  const near = row => pend && (row.y0 - pend.y1) < 1.6 * medH;
+  // 「店名として意味がない」文字列か（数字・記号を除いて2文字未満 ＝ 誤読の残りカス）
+  const weak = m => !m || m.replace(/[\d\s.,\-–—\/:：・。、|｜'"`~™()（）\[\]]/g, '').length < 2;
+
+  for (const row of rows) {
+    let s = row.text.replace(/[（(]\s*[月火水木金土日祝]\s*[)）]/g, ' ');
+    const date = extractCardDate(s);
+    if (date) s = s.replace(date.raw, ' ');
+    const skip = CARD_KW_SKIP.test(s);
+    const amt = skip ? null : extractCardAmount(s);
+    if (amt) s = s.slice(0, amt.idx) + ' ' + s.slice(amt.idx + amt.raw.length);
+    let merchant = cleanMerchant(s);
+    if (weak(merchant)) merchant = '';
+    const isHeader = !amt && CARD_KW_HEADER.test(cleanMerchant(s));
+
+    if (skip || isHeader) { pend = null; continue; }
+
+    if (amt) {
+      const p = near(row) ? pend : null;
+      const e = {
+        date: date || (p && p.date) || null,
+        merchant: merchant || (p ? p.merchant.join(' ') : ''),
+        amount: amt.n, neg: amt.neg,
+        x0: p ? Math.min(p.x0, row.x0) : row.x0,
+        y0: p ? Math.min(p.y0, row.y0) : row.y0,
+        x1: p ? Math.max(p.x1, row.x1) : row.x1,
+        y1: p ? Math.max(p.y1, row.y1) : row.y1,
+        rowY0: row.y0, rowY1: row.y1,
+      };
+      // 日付も店名も無い「金額だけ」の行でも、直後に店名行が続くレイアウトがあるので一旦残す
+      entries.push(e);
+      pend = null;
+      continue;
+    }
+
+    if (date) {
+      pend = { date, merchant: merchant ? [merchant] : [], x0: row.x0, y0: row.y0, x1: row.x1, y1: row.y1 };
+      continue;
+    }
+
+    if (merchant) {
+      const last = entries[entries.length - 1];
+      // 「日付+金額」の行の直後に店名だけの行が来るレイアウト
+      if (last && !last.merchant && !pend && (row.y0 - last.y1) < 1.2 * medH) {
+        last.merchant = merchant;
+        last.y1 = Math.max(last.y1, row.y1);
+        last.x0 = Math.min(last.x0, row.x0); last.x1 = Math.max(last.x1, row.x1);
+        continue;
+      }
+      if (near(row)) {
+        pend.merchant.push(merchant);
+        pend.y1 = Math.max(pend.y1, row.y1);
+        pend.x0 = Math.min(pend.x0, row.x0); pend.x1 = Math.max(pend.x1, row.x1);
+      } else {
+        pend = { date: null, merchant: [merchant], x0: row.x0, y0: row.y0, x1: row.x1, y1: row.y1 };
+      }
+    }
+  }
+  // 日付も店名も付かなかった「金額だけ」の明細は誤読の可能性が高いので落とす
+  return entries.filter(e => e.date || e.merchant);
+}
+
+// 明細が赤丸のどれかと重なっているか
+function entryInCircles(e, circles) {
+  const eh = e.y1 - e.y0;
+  return circles.some(c => {
+    const ch  = c.y1 - c.y0;
+    const ov  = Math.min(e.y1, c.y1) - Math.max(e.y0, c.y0);
+    const hov = Math.min(e.x1, c.x1) - Math.max(e.x0, c.x0);
+    return hov > 0 && ov > 0.5 * Math.min(eh, ch);
+  });
+}
+
+/* ---------- 画面まわり ---------- */
+const CARD_PH = `<div class="receipt-ph"><div class="ri">💳</div><div style="font-size:14px">利用履歴のスクショを選んでください</div></div>`;
+
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function showCardProgress(msg) {
+  const pv = document.getElementById('card-preview');
+  let ov = document.getElementById('card-proc');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.className = 'proc-overlay'; ov.id = 'card-proc';
+    ov.innerHTML = `<div class="spinner"></div><div id="card-proc-msg" style="font-size:14px;color:#6b7280;text-align:center"></div>`;
+    pv.appendChild(ov);
+  }
+  document.getElementById('card-proc-msg').innerHTML = msg;
+}
+function hideCardProgress() { document.getElementById('card-proc')?.remove(); }
+
+function showCardMessage(title, body, actions = []) {
+  document.getElementById('card-result').style.display = 'block';
+  document.getElementById('card-summary').textContent = '';
+  document.getElementById('card-toolbar').style.display = 'none';
+  document.getElementById('card-items').innerHTML = '';
+  document.getElementById('card-save-btn').style.display = 'none';
+  const btns = actions.map((a, i) => `<button class="outline-btn" style="padding:11px;font-size:14px" onclick="cardMsgAction(${i})">${a.label}</button>`).join('');
+  document.getElementById('card-msg').innerHTML =
+    `<div class="imp-msg"><div class="imp-msg-t">${title}</div><div>${body}</div>${btns}</div>`;
+  window._cardMsgActions = actions;
+}
+function cardMsgAction(i) { const a = (window._cardMsgActions || [])[i]; if (a) a.fn(); }
+
+function resetCardResult() {
+  cardItems = [];
+  document.getElementById('card-result').style.display = 'none';
+  document.getElementById('card-msg').innerHTML = '';
+  document.getElementById('card-items').innerHTML = '';
+  document.getElementById('card-summary').textContent = '';
+  document.getElementById('card-toolbar').style.display = '';
+  document.getElementById('card-save-btn').style.display = '';
+}
+
+function resetCardImport() {
+  cardFile = null;
+  window._cardPreviewCtx = null;
+  resetCardResult();
+  document.getElementById('card-preview').innerHTML = CARD_PH;
+}
+
+// プレビュー描画（赤丸の検出範囲と、取り込み対象の行を重ねて表示）
+function drawCardPreview(img, canvasW, canvasH, circles, entries) {
+  const k = Math.min(1, 900 / Math.max(canvasW, canvasH));
+  const c = document.createElement('canvas');
+  c.width = Math.round(canvasW * k); c.height = Math.round(canvasH * k);
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  ctx.lineWidth = Math.max(2, 3 * k);
+  (entries || []).filter(e => e.on).forEach(e => {
+    ctx.fillStyle = 'rgba(232,120,154,.22)';
+    ctx.fillRect(0, e.y0 * k, c.width, (e.y1 - e.y0) * k);
+  });
+  (circles || []).forEach(r => {
+    ctx.strokeStyle = '#15803d';
+    ctx.setLineDash([8, 5]);
+    ctx.strokeRect(r.x0 * k, r.y0 * k, (r.x1 - r.x0) * k, (r.y1 - r.y0) * k);
+  });
+  const pv = document.getElementById('card-preview');
+  pv.innerHTML = '';
+  pv.appendChild(c);
+}
+
+document.getElementById('card-file').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  cardFile = file;
+  resetCardResult();
+  const url = URL.createObjectURL(file);
+  document.getElementById('card-preview').innerHTML = `<img src="${url}" alt="カード利用履歴">`;
+  document.getElementById('card-mode-modal').classList.add('open');
+});
+
+function cancelCardMode() {
+  document.getElementById('card-mode-modal').classList.remove('open');
+  if (!cardBusy) resetCardImport();
+}
+
+async function startCardImport(mode) {
+  document.getElementById('card-mode-modal').classList.remove('open');
+  if (!cardFile || cardBusy) return;
+  cardBusy = true;
+  resetCardResult();
+  showCardProgress('画像を解析中…');
+
+  try {
+    const img    = await loadImageFromFile(cardFile);
+    const canvas = imageToCanvas(img, 3000);
+    const { circles } = detectRedCircles(canvas);
+
+    if (mode === 'circle' && circles.length === 0) {
+      hideCardProgress();
+      drawCardPreview(img, canvas.width, canvas.height, [], []);
+      showCardMessage('赤丸が見つかりませんでした',
+        'はっきりした赤色のペンで囲んでから、もう一度お試しください。',
+        [{ label: '📋 全ての明細を取り込む', fn: () => startCardImport('all') }]);
+      return;
+    }
+
+    showCardProgress('明細を読み取り中… 0%<br><small>少々お待ちください</small>');
+    const res = await Tesseract.recognize(canvas, 'jpn+eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const el = document.getElementById('card-proc-msg');
+          if (el) el.innerHTML = `明細を読み取り中… ${Math.round(m.progress * 100)}%<br><small>少々お待ちください</small>`;
+        }
+      }
+    });
+    hideCardProgress();
+
+    const rows = buildOcrRows(res.data.lines);
+    const all  = parseCardRows(rows);
+
+    // 日付を読めなかった明細には、隣の明細の日付を仮で入れる（利用履歴は日付順に並ぶため）
+    all.forEach((e, i) => {
+      if (e.date) return;
+      const nb = [...all.slice(0, i)].reverse().find(x => x.date && !x.dateGuessed)
+              || all.slice(i + 1).find(x => x.date && !x.dateGuessed);
+      if (nb) { e.date = nb.date; e.dateGuessed = true; }
+    });
+
+    const refunds = all.filter(e => e.neg).length;
+    let entries   = all.filter(e => !e.neg);
+    entries.forEach(e => { e.circled = entryInCircles(e, circles); });
+
+    let notice = '';
+    if (mode === 'circle') {
+      const hit = entries.filter(e => e.circled);
+      if (hit.length === 0 && entries.length > 0) {
+        notice = `赤丸を ${circles.length} 個検出しましたが、その中に明細が見つかりませんでした。読み取れた明細を未選択の状態で表示しています。`;
+      } else {
+        entries = hit;
+      }
+    }
+
+    if (entries.length === 0) {
+      drawCardPreview(img, canvas.width, canvas.height, circles, []);
+      showCardMessage('明細を読み取れませんでした',
+        '文字がはっきり写っているスクショで、もう一度お試しください。<br>「追加」タブから手動入力することもできます。');
+      return;
+    }
+
+    cardItems = entries.map(e => {
+      const dateStr = e.date
+        ? `${e.date.y}-${String(e.date.mo).padStart(2,'0')}-${String(e.date.d).padStart(2,'0')}`
+        : todayStr();
+      const dup = S.expenses.some(x => x.amount === e.amount && String(x.date || '').slice(0, 10) === isoDay(dateStr));
+      const on  = !dup && !(mode === 'circle' && !e.circled);
+      return {
+        on, dup, circled: e.circled, dateStr, amount: e.amount,
+        merchant: e.merchant || '', catId: guessCardCategory(e.merchant),
+        noDate: !e.date, dateGuessed: !!e.dateGuessed,
+        x0: e.x0, y0: e.y0, x1: e.x1, y1: e.y1,
+      };
+    });
+    window._cardPreviewCtx = { img, w: canvas.width, h: canvas.height, circles };
+    drawCardPreview(img, canvas.width, canvas.height, circles, cardItems);
+
+    const parts = [];
+    parts.push(mode === 'circle'
+      ? `赤丸 ${circles.length} 個を検出し、${cardItems.length} 件の明細を読み取りました。`
+      : `${cardItems.length} 件の明細を読み取りました。${circles.length ? `（赤丸 ${circles.length} 個も検出）` : ''}`);
+    if (refunds) parts.push(`返金（マイナス）の ${refunds} 件は除外しました。`);
+    if (cardItems.some(i => i.dup)) parts.push('同じ日・同額の支出がすでにある明細は未選択にしています。');
+    parts.push('内容を確認・修正して保存してください。');
+    document.getElementById('card-summary').textContent = parts.join(' ');
+    document.getElementById('card-msg').innerHTML = notice ? `<div class="imp-msg">${notice}</div>` : '';
+    document.getElementById('card-result').style.display = 'block';
+    renderCardItems();
+  } catch (err) {
+    console.error(err);
+    hideCardProgress();
+    showCardMessage('読み取りに失敗しました', 'もう一度お試しください。');
+  } finally {
+    cardBusy = false;
+  }
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// YYYY-MM-DD（ローカル）→ 保存時と同じISO文字列の先頭10桁（既存データとの重複比較用）
+function isoDay(dateStr) { return dateStrToIso(dateStr).slice(0, 10); }
+function dateStrToIso(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0).toISOString();
+}
+
+function renderCardItems() {
+  const catOpts = sel => S.categories.map(c =>
+    `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('');
+
+  document.getElementById('card-bulk-cat').innerHTML =
+    `<option value="">カテゴリを一括設定…</option>` + catOpts(null);
+
+  const dateWarn = it =>
+    it.noDate      ? '<div class="imp-warn">⚠️ 日付を読み取れなかったため今日の日付にしています</div>' :
+    it.dateGuessed ? '<div class="imp-warn">⚠️ 日付を読み取れなかったため、隣の明細の日付を仮で入れています</div>' : '';
+
+  document.getElementById('card-items').innerHTML = cardItems.map((it, i) => `
+    <div class="imp-item ${it.on ? '' : 'off'}" id="imp-${i}">
+      <label class="imp-chk">
+        <input type="checkbox" ${it.on ? 'checked' : ''} onchange="toggleCardItem(${i}, this.checked)">
+      </label>
+      <div class="imp-body">
+        <div class="imp-line">
+          <input type="date" class="imp-date" value="${it.dateStr}" onchange="cardItems[${i}].dateStr = this.value">
+          <div class="imp-amt">¥<input type="number" inputmode="numeric" min="0" value="${it.amount}"
+               oninput="cardItems[${i}].amount = parseInt(this.value, 10) || 0"></div>
+        </div>
+        <input type="text" class="imp-note" placeholder="店名・メモ" value="${escAttr(it.merchant)}"
+               oninput="cardItems[${i}].merchant = this.value">
+        <select class="imp-select" onchange="cardItems[${i}].catId = this.value">${catOpts(it.catId)}</select>
+        ${it.dup ? '<div class="imp-warn">⚠️ 同じ日・同額の支出がすでに登録されています</div>' : ''}
+        ${dateWarn(it)}
+        ${it.circled ? '<div class="imp-hit">⭕ 赤丸の中の明細</div>' : ''}
+      </div>
+    </div>`).join('');
+  updateCardSaveBtn();
+}
+
+function updateCardSaveBtn() {
+  const n = cardItems.filter(i => i.on).length;
+  const btn = document.getElementById('card-save-btn');
+  btn.textContent = n ? `✅ 選択した ${n} 件を保存する` : '取り込む明細を選択してください';
+  btn.disabled = n === 0;
+}
+
+function redrawCardPreview() {
+  const p = window._cardPreviewCtx;
+  if (p) drawCardPreview(p.img, p.w, p.h, p.circles, cardItems);
+}
+
+function toggleCardItem(i, on) {
+  cardItems[i].on = on;
+  document.getElementById('imp-' + i)?.classList.toggle('off', !on);
+  updateCardSaveBtn();
+  redrawCardPreview();
+}
+
+function setAllCardItems(on) {
+  cardItems.forEach(i => { i.on = on; });
+  renderCardItems();
+  redrawCardPreview();
+}
+
+function bulkCardCategory(catId) {
+  if (!catId) return;
+  cardItems.forEach(i => { i.catId = catId; });
+  renderCardItems();
+}
+
+async function saveCardItems() {
+  const sel = cardItems.filter(i => i.on);
+  if (!sel.length) { alert('取り込む明細を選択してください'); return; }
+  const bad = sel.findIndex(i => !i.amount || i.amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(i.dateStr || ''));
+  if (bad >= 0) { alert('金額と日付を確認してください（0円や日付なしの明細があります）'); return; }
+  if (sel.some(i => !i.catId)) { alert('カテゴリを選択してください'); return; }
+
+  const base = Date.now();
+  sel.forEach((it, k) => {
+    S.expenses.push({
+      id: (base + k).toString(),
+      amount: it.amount,
+      date: dateStrToIso(it.dateStr),
+      categoryId: it.catId,
+      note: (it.merchant || '').trim(),
+      isFromReceipt: false,
+      isFromCard: true,
+    });
+  });
+  await save();
+
+  const n = sel.length;
+  resetCardImport();
+  toast(`✅ ${n}件を保存しました！`);
   setTimeout(() => switchTab('home'), 600);
 }
 
@@ -1562,7 +2434,7 @@ function renderHistory() {
         <div class="expense-item" onclick="openEditModal('${e.id}')">
           <div class="exp-icon" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
           <div class="exp-info">
-            <div class="exp-cat">${c.name}</div>
+            <div class="exp-cat">${c.name}${e.isFromReceipt ? `<span class="receipt-tag">📷</span>` : e.isFromCard ? `<span class="card-tag">💳</span>` : ''}</div>
             ${e.note ? `<div class="exp-note">${e.note}</div>` : ''}
             <div class="exp-date">${fmtDate(e.date)}</div>
           </div>

@@ -1,7 +1,7 @@
 // sw.js - Service Worker（オフライン対応）
 // ネットワーク優先でファイルを取得し、オフライン時のみキャッシュを使います
 
-const CACHE_NAME = 'playbudget-v2'; // ★更新のたびに番号を上げる
+const CACHE_NAME = 'playbudget-v3'; // ★更新のたびに番号を上げる
 
 // キャッシュするファイル一覧
 const FILES_TO_CACHE = [
